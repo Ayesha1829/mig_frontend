@@ -1,0 +1,489 @@
+.about-page {
+  min-height: 100vh;
+  height: 100dvh;          /* dynamic vh for mobile toolbars */
+  height: 100svh;          /* small viewport (iOS 16+) */
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);
+  padding: 1rem; /* Uniform padding on all sides for better fit */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  overflow: auto;
+}
+
+.about-container {
+  max-width: 1200px; /* Increased for better fit on larger screens */
+  margin: 0 auto;
+  padding: 0 1rem; /* Reduced padding for better fit */
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.back-button {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  align-self: flex-start;
+}
+
+.back-button:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+.about-content {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 1px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e0e7ff;
+  overflow: auto;
+}
+
+.about-title {
+  font-size: 2.7rem;
+  font-weight: 800;
+  color: #1e293b;
+  text-align: center;
+  transform: translateX(-20%);
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #1e40af, #3b82f6, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+}
+
+.about-title::after {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 4px;
+  margin: 12px auto 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.about-text {
+  line-height: 1.65;
+  color: #334155;
+  font-size: 1.3rem;
+  overflow: auto;
+}
+
+.about-text p {
+  margin-bottom: 1.2rem;
+  text-align: left;
+  color: #475569;
+}
+
+.about-signature {
+  font-style: italic;
+  font-weight: 600;
+  color: #1e40af;
+  text-align: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 2px dashed #cbd5e1;
+  font-size: 0.9rem;
+}
+/* Add after line 96 (after .about-signature) */
+
+/* Q&A Section Styles - Optimized for single-page desktop view */
+.qa-section {
+  margin-top: 10px;
+  column-count: 1;  /* Changed from 2 to 1 */
+  column-gap: 30px;
+  column-rule: 1px solid #e0e7ff;
+}
+
+.qa-section h3 {
+  color: #2c3e50;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-top: 22px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #3498db;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.qa-section h3:first-child {
+  margin-top: 0;
+}
+
+.qa-section p {
+  margin-bottom: 15px;
+  line-height: 1.6;
+  font-size: 1.05rem;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+/* Laptop and Desktop responsive design */
+@media (min-width: 1025px) {
+  .about-container {
+    max-width: 1000px; /* Optimized for better fit */
+    padding: 0 1.5rem;
+  }
+  
+  .about-content {
+    padding: 1.2rem;
+  }
+  
+  .about-title {
+    font-size: 2.25rem;
+  }
+  
+  .about-text {
+    font-size: 1.125rem;
+    line-height: 1.6;
+  }
+  
+  .about-text p {
+    margin-bottom: 0.6rem;
+  }
+}
+
+/* Tablet and smaller laptop */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .about-container {
+    max-width: 90%; /* Better fit for tablets */
+    padding: 0 0.8rem;
+  }
+  
+  .about-content {
+    padding: 0.8rem;
+  }
+  
+  .about-title {
+    font-size: 2.1rem;
+  }
+  
+  .about-text {
+    font-size: 1.05rem;
+    line-height: 1.5;
+  }
+  
+  .about-text p {
+    margin-bottom: 0.45rem;
+  }
+}
+
+/* Mobile and small tablet */
+@media (max-width: 768px) {
+  .about-page {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    height: auto;
+    min-height: 100vh;
+    padding: 0.6rem; /* Reduced padding for mobile */
+  }
+  
+  .about-container {
+    padding: 0 0.6rem;
+    height: auto;
+    min-height: auto;
+    max-width: 100%;
+  }
+  
+  .about-content {
+    padding: 1rem 0.8rem;
+    overflow: visible;
+    height: auto;
+  }
+  
+  .about-title {
+    font-size: 1.95rem;
+    margin-bottom: 0.6rem;
+    text-align: left !important;
+    transform: none !important;
+    margin: 0 0 0.6rem 0 !important;
+    width: 100%;
+    display: block;
+  }
+  
+  .about-title::after {
+    width: 50px;
+    height: 2px;
+    margin: 6px 0 0 0 !important;
+  }
+  
+  .about-text {
+    font-size: 1.2rem;
+    line-height: 1.6;
+    overflow: visible;
+    height: auto;
+  }
+  
+  .about-text p {
+    margin-bottom: 0.9rem;
+  }
+  
+  .back-button {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .about-signature {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .qa-section {
+    column-count: 1 !important; /* Single column on mobile */
+    margin-top: 5px;
+  }
+
+  .qa-section h3 {
+    font-size: 1.125rem;
+    margin-top: 15px;
+  }
+
+  .qa-section p {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+  .about-page {
+    padding: 0.4rem; /* Reduced padding for small mobile */
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    height: auto;
+    min-height: 100vh;
+  }
+  
+  .about-container {
+    padding: 0 0.4rem;
+    height: auto;
+    min-height: auto;
+    max-width: 100%;
+  }
+  
+  .about-content {
+    padding: 0.8rem 0.6rem;
+    overflow: visible;
+    height: auto;
+    border-radius: 12px;
+  }
+  
+  .about-title {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    text-align: left !important;
+    transform: none !important;
+    margin: 0 0 0.5rem 0 !important;
+    width: 100%;
+    display: block;
+  }
+  
+  .about-title::after {
+    width: 40px;
+    height: 2px;
+    margin: 6px 0 0 0 !important;
+  }
+  
+  .about-text {
+    font-size: 1.125rem;
+    line-height: 1.5;
+    overflow: visible;
+    height: auto;
+  }
+  
+  .about-text p {
+    margin-bottom: 0.75rem;
+  }
+  
+  .back-button {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .about-signature {
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* iPhone SE and very small devices (375x667) */
+@media (max-width: 375px) and (max-height: 667px) {
+  .about-page {
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    height: 100vh;
+    padding: 0.3rem; /* Minimal padding for very small devices */
+  }
+  
+  .about-container {
+    height: auto;
+    padding: 0 0.3rem;
+    max-width: 100%;
+  }
+  
+  .about-content {
+    padding: 0.6rem 0.5rem;
+    height: auto;
+    overflow: visible;
+    border-radius: 10px;
+  }
+  
+  .about-title {
+    font-size: 1.65rem;
+    text-align: left !important;
+    transform: none !important;
+    margin: 0 0 0.5rem 0 !important;
+    width: 100%;
+    display: block;
+  }
+  
+  .about-title::after {
+    width: 35px;
+    height: 2px;
+    margin: 6px 0 0 0 !important;
+  }
+  
+  .about-text {
+    font-size: 1.05rem;
+    line-height: 1.5;
+    padding-bottom: 0.5rem;
+  }
+  
+  .about-text p {
+    margin-bottom: 0.6rem;
+  }
+  
+  .back-button {
+    padding: 5px 8px;
+    font-size: 0.7rem;
+  }
+  
+  .about-signature {
+    font-size: 0.7rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+  }
+}
+/* 1329x858 screen optimization */
+@media (min-width: 1300px) and (max-width: 1350px) and (min-height: 850px) and (max-height: 870px) {
+  .about-page {
+    padding: 1rem; /* Reduced padding for large screens */
+    min-height: 100vh;
+  }
+  
+  .about-container {
+    max-width: 1100px; /* Optimized for this screen size */
+    padding: 0 1rem;
+  }
+  
+  .back-button {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+  }
+  
+  .about-content {
+    padding: 1.5rem 2rem;
+    border-radius: 16px;
+  }
+  
+  .about-title {
+    font-size: 2.4rem;
+    margin-bottom: 1rem;
+    transform: translateX(-15%);
+  }
+  
+  .about-title::after {
+    width: 70px;
+    height: 3px;
+    margin: 8px auto 0;
+  }
+  
+  .about-text {
+    font-size: 1.2rem;
+    line-height: 1.6;
+    color: #334155;
+  }
+  
+  .about-text p {
+    margin-bottom: 0.9rem;
+    color: #475569;
+  }
+  
+  .about-signature {
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    color: #1e40af;
+  }
+}
+
+@media (max-width: 420px) {
+  .about-container {
+    width: 95vw;
+    height: 94dvh; /* allow a bit more height on very small screens */
+  }
+  .about-text { max-width: 74ch; line-height: 1.45; }
+}
+/* --- HARD OVERRIDES FOR iOS SAFARI SCROLL --- */
+
+/* 1) Ensure the root can grow & scroll */
+html, body, #root, #__next {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* iOS hint for viewport fill */
+html { height: -webkit-fill-available; }
+
+/* 2) Make ONLY .about-page the scroller; never fixed-height */
+.about-page {
+  height: auto !important;                 /* kill any fixed height */
+  min-height: 100dvh !important;           /* dynamic vh on iOS16+ */
+  /* fallback for older iOS: */
+  min-height: -webkit-fill-available;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 3) Disable nested scroll traps */
+.about-content,
+.about-text {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+/* 4) Remove fixed heights at narrow sizes */
+@media (max-width: 420px) {
+  .about-container {
+    height: auto !important;
+    min-height: auto !important;  /* do NOT pin this wrapper */
+  }
+}
+
+/* 5) Kill any accidental global overflow locks */
+*,
+*:before,
+*:after {
+  overscroll-behavior: contain; /* avoid rubber-band stealing */
+}

@@ -1,0 +1,4225 @@
+/* iPhone Safe Area Support */
+html {
+    padding-top: constant(safe-area-inset-top); /* iOS 11.0-11.2 */
+    padding-top: env(safe-area-inset-top);      /* iOS 11.2+ */
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: constant(safe-area-inset-left);
+    padding-left: env(safe-area-inset-left);
+    padding-right: constant(safe-area-inset-right);
+    padding-right: env(safe-area-inset-right);
+}
+
+/* General safe area support for fixed positioned elements */
+[style*="position: fixed"] {
+    /* Ensure fixed elements respect safe areas */
+    top: calc(env(safe-area-inset-top) + var(--fixed-top, 0px));
+}
+
+:root {
+    --cell-size: 80px;
+    --board-size: calc(8 * var(--cell-size));
+    --primary-color: #2c3e50;
+    --secondary-color: #34495e;
+    --accent-color: #3498db;
+}
+
+
+
+/* Classic Theme (Default) */
+:root, [data-theme="classic"] {
+    --white-migo: #ecf0f1;
+    --black-migo: #2c3e50;
+    --yugo-color: #e74c3c;
+    --board-color: #d1e6f9;
+    --board-hover: #a8c3e8;
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+    --white-migo: #ecf0f1;
+    --black-migo: #2c3e50;
+    --yugo-color: #e74c3c;
+    --board-color: #34495e;
+    --board-hover: #3d566e;
+}
+
+/* High Contrast Theme */
+[data-theme="high-contrast"] {
+    --white-migo: #ffffff;
+    --black-migo: #000000;
+    --yugo-color: #ff0000;
+    --board-color: #ffffff;
+    --board-hover: #666666;
+}
+
+/* Nature Theme */
+[data-theme="nature"] {
+    --white-migo: #e8f3e6;
+    --black-migo: #2d5a27;
+    --yugo-color: #d35400;
+    --board-color: #c8e6c9;
+    --board-hover: #81c784;
+}
+
+/* Felt Theme */
+[data-theme="felt"] {
+    --white-migo: #f8f9fa;
+    --black-migo: #721c24;
+    --yugo-color: #ffc107;
+    --board-color: #1a6b3a;
+    --board-hover: #22a05c;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    background: #ecf0f1;
+    padding: 20px;
+    padding-top: calc(env(safe-area-inset-top) + 20px); /* Extra buffer for safe area */
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Landing page specific overrides */
+body.landing-page {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 0 !important;
+    padding-top: env(safe-area-inset-top) !important; /* Safe area for landing page */
+    align-items: stretch !important;
+    position: static !important;
+    display: block !important;
+}
+
+/* Force scrolling on landing page */
+.landing-page-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow-y: auto;
+    position: relative;
+    z-index: 1;
+}
+
+/* Override body constraints when landing page wrapper exists */
+body:has(.landing-page-wrapper) {
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    position: static !important;
+}
+
+header {
+    margin-bottom: 5px;
+    width: 100%;
+    max-width: 1036px;
+    text-align: left;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+h1 {
+    font-size: 2.25rem;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    font-weight: bold;
+    margin-left: 325px; /* Increased from 288px to 308px (added 20px) */
+    text-align: center; /* Ensure the title is centered */
+    font-family: 'Russo One', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.game-container {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: stretch;
+    max-width: min(1200px, 90vw);
+    margin: 0 auto;
+}
+
+.game-board-area {
+    display: flex;
+    flex-direction: column;
+    /* No fixed height here */
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+}
+
+.game-controls-area {
+    display: flex;
+    flex-direction: column;
+    width: 256px;
+    min-width: 256px;
+    max-width: 256px;
+    justify-content: flex-start;
+    height: var(--board-size); /* Changed from 'auto' to match board height */
+    min-height: var(--board-size); /* Ensure minimum height matches board */
+    max-height: var(--board-size); /* Ensure maximum height matches board */
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    border: 2px solid var(--primary-color);
+    border-radius: 5px;
+    background: #fff;
+    padding-top: 10px;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+.player-info,
+.player-info.bottom {
+    align-items: center;
+    background: #34495e;
+    background: var(--secondary-color);
+    border-radius: 5px 5px 0 0;
+    color: #fff;
+    display: flex;
+    height: 40px;
+    justify-content: space-between;
+    max-height: 40px;
+    min-height: 40px;
+    padding: 0 10px;
+}
+
+.player-info.bottom {
+    border-radius: 0 0 5px 5px;
+}
+
+.player {
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 5px;
+}
+
+.player.active {
+    background: transparent;
+    /* border-bottom: 3px solid var(--accent-color); */
+    background: var(--accent-color);
+}
+
+.player-color {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.player-color.white {
+    background: var(--white-migo);
+    border: 2px solid #bdc3c7;
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.2),
+        inset 0 2px 3px rgba(255, 255, 255, 0.8);
+}
+
+.player-color.black {
+    background: var(--black-migo);
+    border: 2px solid #2c3e50;
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 2px 3px rgba(255, 255, 255, 0.2);
+}
+
+.player.active .player-color {
+    transform: scale(1.1);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+
+.player.active .player-color.white {
+    box-shadow: 
+        0 3px 12px rgba(0, 0, 0, 0.3),
+        inset 0 2px 5px rgba(255, 255, 255, 0.9),
+        0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+.player.active .player-color.black {
+    box-shadow: 
+        0 3px 12px rgba(0, 0, 0, 0.4),
+        inset 0 2px 5px rgba(255, 255, 255, 0.3),
+        0 0 15px rgba(0, 0, 0, 0.5);
+}
+
+.player-timer {
+    font-family: monospace;
+    font-size: 1.2rem;
+    transition: opacity .3s 
+ease;
+    
+}
+
+.player-timer.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(8, var(--cell-size));
+    grid-template-rows: repeat(8, var(--cell-size));
+    border: 2px solid var(--primary-color);
+    position: relative;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+}
+
+.column-labels, .row-labels {
+    display: flex;
+    color: var(--primary-color);
+}
+
+.column-labels {
+    width: var(--board-size);
+    justify-content: space-around;
+    padding: 5px 0;
+}
+
+.row-labels {
+    flex-direction: column;
+    height: var(--board-size);
+    justify-content: space-around;
+    padding: 0 5px;
+    align-items: center;
+}
+
+.board-with-labels {
+    display: flex;
+    margin: 0;
+}
+
+.cell {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    border: 1px solid #bdc3c7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: var(--board-color);
+}
+
+/* Remove the alternating cell colors */
+.cell:nth-child(odd) {
+    background-color: var(--board-color);
+}
+
+/* Only apply hover effects on devices with hover capability (desktop) */
+@media (hover: hover) {
+    .cell:hover {
+        background-color: var(--board-hover) !important;
+    }
+}
+
+/* Igo cell styling - Animated Border */
+.igo-cell {
+    animation: igo-pulse 1.5s ease-in-out infinite; /* Keep animation, maybe faster */
+    background-color: rgba(212, 175, 55, 0.15); /* Slightly lighter static gold background */
+    border: 3px solid transparent; /* Base border for animation */
+}
+
+@keyframes igo-pulse {
+    0% {
+        border-color: rgba(212, 175, 55, 0.8); /* Gold */
+    }
+    50% {
+        border-color: rgba(255, 255, 150, 1); /* Bright Yellow/White */
+    }
+    100% {
+        border-color: rgba(212, 175, 55, 0.8); /* Gold */
+    }
+}
+
+/* Override any other cell styles for igo cells */
+/* This rule is no longer needed as updateBoard handles the logic */
+
+/* Ensure dots and yugos appear above the glow */
+.dot, .yugo {
+    position: relative;
+    z-index: 2;
+}
+
+/* Override last-move highlighting for igo cells */
+.cell.last-move {
+    background-color: rgba(46, 204, 113, 0.2);
+    box-shadow: inset 0 0 10px 2px rgba(46, 204, 113, 0.6);
+}
+
+.current-state .cell.last-move {
+    background-color: rgba(46, 204, 113, 0.2);
+    box-shadow: inset 0 0 10px 2px rgba(46, 204, 113, 0.6);
+}
+
+/* Remove last move highlighting in review mode */
+.review-mode .cell.last-move {
+    box-shadow: none;
+    background-color: #d1e6f9;
+}
+
+.dot {
+    width: 70%;
+    height: 70%;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dot.white {
+    background: var(--white-migo);
+    border: 2px solid #95a5a6;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.dot.black {
+    background: var(--black-migo);
+    border: 2px solid #1a252f;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.dot.shrink {
+    transform: translate(-50%, -50%) scale(0.1);
+    opacity: 0;
+    transition: all 1s ease;
+}
+
+/* Add fade-out animation for yugo dots */
+.dot.fade-out {
+    animation: fadeOutDot 0.2s ease forwards;
+}
+
+@keyframes fadeOutDot {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(0.2);
+        opacity: 0;
+    }
+}
+
+/* Add specific animation timing for review mode */
+.review-mode .dot.shrink {
+    transition: all 0.2s ease;
+}
+
+.yugo {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--yugo-color);
+    z-index: 2;
+}
+
+.yugo.standard {
+    width: 18.75%;  /* Increased from 12.5% by 50% */
+    height: 18.75%; /* Increased from 12.5% by 50% */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.yugo.double {
+    width: 30%;
+    height: 15%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #e74c3c;
+    border-radius: 50%;
+    position: absolute;
+}
+
+.yugo.triple {
+    width: 24px;
+    height: 21px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, calc(-50% - 2px));
+    background-color: transparent;
+    position: absolute;
+    border: none;
+    overflow: visible;
+}
+
+.yugo.triple::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-color: var(--yugo-color);
+    -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyMSc+PHBhdGggZD0nTTAsMjEgTDEyLDAgTDI0LDIxIHonIGZpbGw9JyMwMDAwMDAnLz48L3N2Zz4=");
+    mask-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyMSc+PHBhdGggZD0nTTAsMjEgTDEyLDAgTDI0LDIxIHonIGZpbGw9JyMwMDAwMDAnLz48L3N2Zz4=");
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    
+
+}
+
+.yugo.quadruple {
+    width: 25%;
+    height: 25%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    border-radius: 0;
+    background-color: var(--yugo-color);
+}
+
+.controls {
+    background: white;
+    padding: 15px 15px 30px 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin: 0;
+    height: var(--board-size);
+    min-height: var(--board-size);
+    max-height: var(--board-size);
+    border: 2px solid var(--primary-color);
+}
+
+.controls h2 {
+    margin-bottom: 8px; /* Reduced from 10px to 8px */
+    color: var(--primary-color);
+    font-size: 1.3rem;
+}
+
+.btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 6px 12px; /* Slightly smaller buttons */
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.2s;
+    margin: 5px;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+}
+
+.btn:hover {
+    background: var(--accent-color);
+}
+
+.btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+/* Fixed container heights to prevent layout shifts */
+#pregame-controls, #ingame-controls {
+    height: 136px; /* Reduced from 140px to 136px */
+    width: 100%;
+    padding: 8px; /* Reduced from 10px to 8px */
+    box-sizing: border-box;
+}
+
+/* Timer settings with horizontal layout */
+.timer-settings {
+    margin: 13px 0; /* Reduced from 15px to 13px */
+}
+
+.timer-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.option-cell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.option-cell label {
+    color: var(--primary-color);
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+/* Game log container styles */
+#game-log-container {
+    position: relative;
+    flex: 1;
+    margin: 0 0 10px 0;    /* Added 10px bottom margin for spacing */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 10px;
+    width: 100%;
+}
+
+/* Game log styles */
+.game-log {
+    position: relative;
+    width: 100%;           /* Changed from 236px */
+    max-width: 236px;      /* Add max-width instead */
+    margin: 0 auto;
+    flex: 0 0 auto; 
+    height: 518px;              /* Changed from 450px (+15%) */
+    min-height: 518px;          /* Changed from 450px (+15%) */
+    max-height: 518px;          /* Changed from 450px (+15%) */
+    overflow-y: auto;
+    scrollbar-width: thin;
+    border: 1px solid #ddd;
+    padding: 10px;
+    font-family: monospace;
+    background: white;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+/* When in review mode, add padding to make room for controls */
+.game-log.with-review-controls {
+    /* Use padding to make space for the review controls */
+    padding-bottom: 64px; /* Adjusted for smaller controls */
+}
+
+/* Allow text selection for move history content */
+.log-entry {
+    margin-bottom: 5px;
+    display: flex;
+    /* Allow text selection for move entries */
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+.log-entry.highlighted {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+.move-number {
+    min-width: 40px; /* Enough space for 3 digits (100+) */
+    font-weight: bold;
+    text-align: right; /* Right-align the numbers */
+    padding-right: 8px; /* Consistent padding after the period */
+    /* Allow text selection for move numbers */
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+.white-move, .black-move {
+    width: 40%; /* Keep these the same */
+    display: flex;
+    padding-left: 5px; /* Add a consistent left padding */
+    /* Allow text selection for move coordinates */
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+.white-move.highlighted, .black-move.highlighted {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+.yugo-indicator {
+    color: var(--yugo-color);
+    margin-left: 3px;
+    font-weight: bold;
+    /* Allow text selection for yugo indicators */
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+.review-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* gap: 1px; */
+    flex: 0 0 auto;           
+    /* width: 236px;             
+    max-width: 236px; */
+    margin: 0 auto;
+    padding: 2px;
+    box-sizing: border-box;
+}
+
+.review-controls .btn {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+    padding: 0;
+    line-height: 1;
+    margin: 0;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f8f9fa;
+    color: black;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.review-controls .btn:hover:not(:disabled) {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.review-controls .btn:active:not(:disabled) {
+    background: #dee2e6;
+    transform: translateY(1px);
+}
+
+.review-controls .btn:disabled {
+    background: #f8f9fa;
+    color: #6c757d;
+    border-color: #dee2e6;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.review-controls #first-move-btn,
+.review-controls #prev-move-btn,
+.review-controls #next-move-btn,
+.review-controls #last-move-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 0;
+    border-radius: 1px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Arrow icons */
+.arrow-icon {
+    display: inline-block;
+    line-height: 1;
+    font-size: inherit;
+}
+
+.move-counter {
+    text-align: center;
+    margin: 0;
+    font-weight: bold;
+    font-size: 0.75rem;
+    color: #495057;
+    white-space: nowrap;
+    padding: 0 6px;  /* Increased padding */
+    width: 110px;  /* Fixed width instead of min-width */
+    min-width: 110px;
+    padding: 0 2px;
+    flex-shrink: 0;
+    background: #f8f9fa;
+    border: 1px solid #ccc;
+    border-radius: 1px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Hover effects for hold functionality */
+.review-controls #prev-move-btn:hover:not(:disabled),
+.review-controls #next-move-btn:hover:not(:disabled) {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.review-controls #prev-move-btn:active:not(:disabled),
+.review-controls #next-move-btn:active:not(:disabled) {
+    background: #0056b3;
+    border-color: #0056b3;
+    transform: translateY(1px);
+}
+
+/* Special styling for first/last move buttons */
+.review-controls #first-move-btn:hover:not(:disabled),
+.review-controls #last-move-btn:hover:not(:disabled) {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+/* Prevent text selection during hold operations */
+.review-controls #prev-move-btn:active,
+.review-controls #next-move-btn:active {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Additional styling for disabled state */
+.review-controls .btn:disabled .arrow-icon {
+    opacity: 0.5;
+}
+
+#review-section h3 {
+    margin-top: 5px;
+    margin-bottom: 3px;
+    font-size: 1.2rem; /* Closer to original size */
+}
+
+.notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    z-index: 10001;
+    width: var(--board-size);
+    max-width: var(--board-size);
+    text-align: center;
+    display: none;
+    pointer-events: auto;
+}
+
+.notification h3 {
+    margin-bottom: 10px;
+    color: var(--primary-color);
+}
+
+.notification p {
+    margin-bottom: 15px;
+}
+
+.notification-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.notification-buttons .btn {
+    position: relative;
+    z-index: 10001;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+    z-index: 10000;
+    display: block;
+    pointer-events: none;
+}
+
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 5000;
+    display: none;
+}
+
+/* Mobile Responsive Styles - Consolidated */
+@media (max-width: 600px) {
+    /* Base mobile layout */
+    html, body {
+        height: 100vh !important;
+        height: calc(var(--vh, 1vh) * 100) !important;
+        width: 100% !important;
+        overflow: hidden !important;
+        position: relative;
+    }
+    
+    /* Landing page mobile overrides */
+    body.landing-page {
+        height: auto !important;
+        min-height: 100vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        position: static !important;
+    }
+
+    body {
+        background: #ecf0f1;
+        min-height: calc(var(--vh, 1vh) * 100) !important;
+        padding-bottom: 120px !important;
+    }
+
+    /* Header adjustments */
+    header {
+        padding: 0.3em 0 0.1em 0 !important;
+        padding-top: calc(env(safe-area-inset-top) + 0.3em) !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        text-align: center !important;
+        position: relative;
+        left: 0;
+        right: 0;
+    }
+    
+    header h1 {
+        font-size: 2em;
+        text-align: center;
+        margin: 0 auto;
+        width: 100%;
+        overflow-wrap: break-word;
+        word-break: break-word;
+        white-space: normal;
+        margin-left: 0 !important;
+    }
+
+    /* Board sizing */
+    :root {
+        --cell-size: calc(96vw / 8) !important;
+    }
+
+    .game-board-area {
+        width: 96vw !important;
+        max-width: 96vw !important;
+        margin: 0 auto 0 10px !important;
+        gap: 0 !important;
+        border: 2px solid var(--secondary-color) !important;
+        border-radius: 0 !important;
+        width: calc(96vw + 4px) !important;
+    }
+
+    .board-with-labels {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        border: none !important;
+        border-radius: 0 !important;
+        width: var(--board-size) !important;
+    }
+
+    .board {
+        width: 100% !important;
+        height: 96vw !important;
+        max-width: 100% !important;
+        max-height: 96vw !important;
+        aspect-ratio: 1 / 1 !important;
+        margin: 0 auto !important;
+        border: none !important;
+    }
+
+    /* Hide desktop controls */
+    .game-controls-area {
+        display: none !important;
+    }
+
+    /* Player info adjustments */
+    .player-info, .player-info.bottom {
+        margin: -2px auto !important;
+        border-radius: 5px 5px 0 0 !important;
+        width: 96vw !important;
+        max-width: calc(var(--board-size) + 4px) !important;
+        padding: 0 10px !important;
+        box-sizing: border-box !important;
+    }
+
+    .player-info.bottom {
+        margin-top: -18px !important;
+    }
+    
+    .player-timer {
+        margin-left: auto !important;
+        font-size: 1rem !important;
+        position: static !important;
+        top: auto !important;
+    }
+
+    /* Toast positioning */
+    .toast {
+        bottom: 80px;
+        width: 90%;
+        max-width: 400px;
+        padding: 12px 24px;
+        text-align: center;
+    }
+
+    /* Modal responsiveness */
+    .notification {
+        width: 96vw !important;
+        max-width: 96vw !important;
+        margin: 0 auto !important;
+    }
+
+    .tutorial-popup {
+        width: 96vw !important;
+        max-width: 96vw !important;
+        margin: 0 auto !important;
+    }
+
+    /* Mobile action bars */
+    #mobile-action-bar {
+        display: flex !important;
+        position: fixed;
+        bottom: 60px;
+        left: 0;
+        width: 100%;
+        background: #f8f8f8;
+        border-top: 1px solid #ccc;
+        border-bottom: 1px solid #ccc;
+        z-index: 3000;
+        justify-content: space-around;
+        padding: 8px 0 6px 0;
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.07);
+    }
+
+    #mobile-action-bar .btn {
+        flex: 1 1 30%;
+        margin: 0 6px;
+        font-size: 1.1em;
+        padding: 0.7em 0;
+        background: #e74c3c;
+        color: #fff;
+        border-radius: 6px;
+        border: none;
+    }
+
+    #mobile-utility-bar {
+        display: flex !important;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: #fff;
+        border-top: 2px solid #3498db;
+        z-index: 3001;
+        justify-content: space-around;
+        padding: 8px 0 6px 0;
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.09);
+    }
+
+    #mobile-utility-bar .btn {
+        flex: 1 1 30%;
+        margin: 0 6px;
+        font-size: 1.1em;
+        padding: 0.7em 0;
+        background: #3498db;
+        color: #fff;
+        border-radius: 6px;
+        border: none;
+    }
+
+    /* Mobile review bar */
+    #mobile-review-bar {
+        display: flex !important;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        background: #fff;
+        border-top: 2px solid #3498db;
+        border-bottom: 1px solid #ccc;
+        z-index: 2500;
+        padding: 10px 0 4px 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        position: relative;
+    }
+
+    #mobile-review-bar .review-controls {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        width: 100%;
+    }
+
+    #mobile-review-bar .btn {
+        border-radius: 2px;
+        font-size: 1em;
+        line-height: 1;
+        margin: 0;
+        min-width: 32px;
+        max-width: 32px;
+        height: 32px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #mobile-review-bar .move-counter {
+        text-align: center;
+        font-size: 0.9em;
+        margin: 0 8px;
+        color: #2c3e50;
+        font-weight: bold;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* Disable hover effects on mobile */
+    .cell:hover,
+    .tutorial-demo-cell:hover {
+        background-color: var(--board-color) !important;
+    }
+
+    /* Update banner mobile responsiveness */
+    #update-banner div {
+        flex-direction: column !important;
+        text-align: center !important;
+    }
+    
+    #update-banner span {
+        margin-bottom: 10px !important;
+    }
+
+    /* Pregame modal */
+    #pregame-modal.notification {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 95vw;
+        max-width: 400px;
+        z-index: 2000;
+        background: white;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        padding: 24px 12px 18px 12px;
+        border-radius: 10px;
+    }
+
+    #pregame-modal h2 {
+        margin-bottom: 18px;
+        font-size: 1.5em;
+        text-align: center;
+    }
+
+    #pregame-controls-mobile > * {
+        margin-bottom: 12px;
+        width: 100%;
+    }
+
+    #pregame-start-btn {
+        margin-top: 10px;
+        width: 100%;
+        font-size: 1.2em;
+        padding: 10px 0;
+    }
+
+    /* Tutorial and rules popups */
+    #mobile-tutorial-close-x {
+        display: block !important;
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        font-size: 2em;
+        background: none;
+        border: none;
+        color: #333;
+        z-index: 1002;
+        cursor: pointer;
+    }
+
+    #tutorial-popup {
+        width: 96vw !important;
+        max-width: 96vw !important;
+        min-width: unset !important;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        box-sizing: border-box;
+        max-height: 90vh !important;
+        height: auto !important;
+        overflow: hidden !important;
+    }
+    
+    #tutorial-popup #tutorial-content {
+        padding: 12px 16px 100px 16px;
+        overflow-y: auto;
+        max-height: calc(90vh - 100px);
+        flex: 1;
+    }
+
+    #tutorial-demo {
+        height: 250px !important;
+        margin: 8px 0 !important;
+    }
+
+    #tutorial-title {
+        font-size: 1.3rem !important;
+        margin-bottom: 8px !important;
+    }
+
+    #tutorial-message {
+        font-size: 0.95rem !important;
+        line-height: 1.4 !important;
+        margin-bottom: 8px !important;
+    }
+
+    #rules-popup {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 500px !important;
+        height: 600px !important;
+        max-width: 98vw !important;
+        max-height: 98vh !important;
+        min-width: unset !important;
+        min-height: unset !important;
+        box-sizing: border-box;
+        overflow-y: auto !important;
+        background: #fff;
+        border-radius: 10px;
+        z-index: 10001 !important;
+        padding: 30px 18px 18px 18px !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+    }
+
+    .tutorial-navigation {
+        display: flex;
+        justify-content: center;
+        gap: 4px !important;
+        flex-wrap: nowrap !important;
+        padding: 12px 8px;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-radius: 0 0 10px 10px;
+        border-top: 1px solid #eee;
+        overflow-x: auto;
+    }
+
+    .tutorial-navigation .btn {
+        min-width: 50px !important;
+        max-width: 80px !important;
+        font-size: 0.8em !important;
+        padding: 0.3em 0.5em !important;
+        margin: 0 1px !important;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* Hide game log in review mode on mobile */
+    body.review-mode-mobile #game-log {
+        display: none !important;
+    }
+
+    /* Review button mobile */
+    .review-button {
+        padding: 1px 4px;
+        font-size: 0.6rem;
+        margin-left: 4px;
+        min-width: auto;
+        max-width: fit-content;
+        white-space: nowrap;
+    }
+    
+    .review-button-container {
+        gap: 4px;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0 10px;
+        box-sizing: border-box;
+        margin: 10px auto 0 auto !important;
+    }
+    
+    .review-button-container h2 {
+        font-size: 0.95rem !important;
+        margin: 0 !important;
+        flex-shrink: 0;
+    }
+
+    /* Header positioning fixes */
+    header > div[style*="position: absolute"][style*="top: 20px"] {
+        top: 26px !important;
+    }
+
+    /* Show Back to Home button on mobile game page - small and unobtrusive */
+      .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        display: block !important;
+        position: fixed !important;
+        top: calc(env(safe-area-inset-top) + 0.3em) !important;
+        left: 10px !important;
+        z-index: 1001 !important;
+    }
+
+    /* Make the button smaller and more subtle on mobile */
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] button {
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+        border-radius: 4px !important;
+        opacity: 0.7 !important;
+    }
+
+    /* Hide Back to Home button on landing page - hamburger menu provides navigation */
+    .landing-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        display: none !important;
+    }
+
+    header > div[style*="position: fixed"][style*="right: 20px"] {
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        margin: 10px 0 !important;
+        text-align: center !important;
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 10px !important;
+    }
+
+    header > div[style*="position: fixed"][style*="right: 20px"] span {
+        margin: 0 !important;
+        text-align: center !important;
+    }
+
+    header img[src="/migoyugo-logo.png"] {
+        margin: -60px auto 5px auto !important; /* Move logo up to position just below hamburger (hamburger is at top: 5px, height: 32px) */
+        display: block !important;
+    }
+
+    header {
+        flex-direction: column !important;
+        align-items: center !important;
+        padding: 5px 20px !important;
+        padding-top: calc(env(safe-area-inset-top) + 5px) !important;
+        min-height: auto !important;
+        position: relative !important;
+    }
+
+    header > div {
+        margin: 5px 0 !important;
+    }
+
+    header > div[style*="position: fixed"] {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        z-index: auto !important;
+    }
+
+    header h1 {
+        margin-left: 0 !important;
+        margin-top: 10px !important;
+        order: 2 !important;
+    }
+
+    /* Enhanced mobile review bar button styles */
+    #mobile-review-bar .btn[title="Exit Review"],
+    #mobile-review-bar .btn[title*="Move"],
+    #mobile-review-bar .btn[title*="First"],
+    #mobile-review-bar .btn[title*="Last"] {
+        font-size: 1.3em;
+        min-width: 32px;
+        max-width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Mobile controls and visibility */
+    .mobile-only {
+        display: block !important;
+    }
+    
+    .mobile-controls-button {
+        display: none !important;
+    }
+    
+    .game-controls-area {
+        display: none !important;
+    }
+    
+    .player-buttons {
+        display: none !important;
+    }
+    
+    .utility-buttons-container {
+        display: none !important;
+    }
+    
+    #mobile-action-bar, #mobile-utility-bar {
+        display: flex !important;
+    }
+    
+    .mobile-controls-modal {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        z-index: 15000 !important;
+    }
+    
+    .mobile-controls-modal .option-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .mobile-controls-modal .timer-row {
+        display: flex;
+        gap: 15px;
+    }
+    
+    .mobile-controls-modal .control-select {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA0IDUnPjxwYXRoIGZpbGw9JyM2NjYnIGQ9J00yIDBMMCAyaDR6bTAgNUwwIDNoNHonLz48L3N2Zz4=");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 12px;
+        padding-right: 40px !important;
+    }
+
+    /* Mobile review section */
+    #review-section {
+        width: calc(100% - 8px);
+        max-width: calc(100% - 8px);
+        margin: 10px auto;
+        padding: 6px 4px;
+    }
+    
+    .review-controls {
+        width: 100%;
+        gap: 2px;
+        padding: 2px;
+        flex-wrap: nowrap;
+    }
+    
+    .review-controls .btn {
+        min-width: 32px;
+        max-width: 32px;
+        height: 32px;
+        font-size: 14px;
+        padding: 0;
+        border-radius: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .review-controls #first-move-btn,
+    .review-controls #prev-move-btn,
+    .review-controls #next-move-btn,
+    .review-controls #last-move-btn {
+        min-width: 32px;
+        max-width: 32px;
+        height: 32px;
+        font-size: 16px;
+        padding: 0;
+        border-radius: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .move-counter {
+        font-size: 0.85rem;
+        min-width: 60px;
+        padding: 0 4px;
+        flex-shrink: 1;
+    }
+    
+    #review-section > div:last-child {
+        margin-top: 6px;
+        text-align: center;
+    }
+    
+    #review-section .btn {
+        font-size: 13px !important;
+        padding: 6px 14px !important;
+        white-space: nowrap;
+    }
+}
+
+.rules-popup {
+    width: 96vw;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 30px;
+    text-align: left;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    z-index: 10001;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.rules-popup h2 {
+    margin-bottom: 20px;
+    text-align: center; /* Center the MigoYugo title in rules popup */
+}
+
+.rules-popup h3 {
+    margin: 15px 0 10px;
+    color: var(--primary-color);
+    text-align: left;
+}
+
+.rules-popup p {
+    text-align: left;
+}
+
+.rules-popup ul {
+    margin-left: 20px;
+    text-align: left;
+    padding-left: 20px;
+}
+
+.rules-popup li {
+    margin-bottom: 10px;
+    text-align: left;
+}
+
+#rules-close-btn {
+    margin-top: 20px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    float: none; /* Remove float left */
+}
+
+/* Game Mode Toggle */
+.game-mode-selector {
+    margin-bottom: 15px;
+}
+
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: space-between;
+}
+
+.toggle-label {
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    opacity: 0.7;
+    font-weight: 500;
+}
+
+.toggle-label.active {
+    opacity: 1;
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.toggle {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+    margin: 0 10px;
+}
+
+.toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border: 2px solid #999;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input:checked + .slider {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--accent-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.slider.round {
+    border-radius: 24px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* Small toggle specific styles */
+.toggle.small {
+    width: 40px;
+    height: 20px;
+}
+
+.toggle.small .slider {
+    border-width: 1.5px;
+}
+
+.toggle.small .slider:before {
+    height: 14px;
+    width: 14px;
+    left: 2px;
+    bottom: 1.5px;
+}
+
+.toggle.small input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+/* Timer toggle specific styles */
+#timer-toggle + .slider {
+    background-color: #ff4444; /* Red when off */
+}
+
+#timer-toggle:checked + .slider {
+    background-color: #44ff44; /* Green when on */
+}
+
+#timer-toggle + .slider:before {
+    background-color: white;
+}
+
+/* Sound toggle specific styles */
+#sound-toggle + .slider {
+    background-color: #e74c3c;
+    border-color: #c0392b;
+}
+
+#sound-toggle:checked + .slider {
+    background-color: #2ecc71;
+    border-color: #27ae60;
+}
+
+#sound-toggle + .slider:before {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.yugo-highlight {
+    box-shadow: inset 0 0 10px 5px rgba(39, 174, 96, 0.7);
+    background-color: rgba(39, 174, 96, 0.3);
+    transition: box-shadow 1s ease, background-color 1s ease;
+}
+
+.yugo-highlight.fade-out {
+    box-shadow: inset 0 0 0 0 rgba(39, 174, 96, 0);
+    background-color: #d1e6f9; /* Use exact hex code for your cell color */
+}
+
+.dot.new-dot {
+    animation: bounce-in 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    animation-fill-mode: both;
+}
+
+@keyframes bounce-in {
+    0% { transform: translate(-50%, -50%) scale(0); }
+    80% { transform: translate(-50%, -50%) scale(1.02); }
+    90% { transform: translate(-50%, -50%) scale(0.98); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Tablet and Desktop Responsive Breakpoints */
+@media (max-width: 1024px) {
+    :root {
+        --cell-size: 65px;
+    }
+    
+    .game-container {
+        gap: 15px;
+    }
+    
+    .game-controls-area {
+        width: 256px;
+        min-width: 256px;
+        max-width: 256px;
+    }
+
+    .review-button {
+        padding: 3px 7px;
+        font-size: 0.75rem;
+        margin-left: 12px;
+    }
+
+    #review-section {
+        width: calc(100% - 20px);
+        max-width: 100%;
+        margin: 10px auto;
+    }
+    
+    .review-controls {
+        width: 100%;
+        gap: 3px;
+    }
+    
+    .review-controls .btn {
+        min-width: 32px;
+        max-width: 32px;
+        height: 32px;
+        font-size: 14px;
+        padding: 0;
+        border-radius: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .move-counter {
+        font-size: 0.8rem;
+        min-width: 70px;
+    }
+
+    .game-log {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+@media (min-width: 601px) {
+    #mobile-action-bar, #mobile-utility-bar {
+        display: none !important;
+    }
+    #mobile-tutorial-close-x {
+        display: none !important;
+    }
+}
+
+
+
+/* Main buttons row that stays in same position */
+.main-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin: 0 0 13px 0; /* Reduced from 15px to 13px */
+    padding: 0 5px;
+}
+
+.action-btn {
+    flex: 1;
+    margin: 0 5px;
+    text-align: center;
+    padding: 8px 0;
+}
+
+.action-btn:first-child {
+    margin-left: 0;
+}
+
+.action-btn:last-child {
+    margin-right: -20px;
+}
+
+/* Option row styling */
+.option-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px; /* Increased from 13px to 18px for extra breathing room */
+}
+
+.option-row label {
+    flex: 1;
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
+
+/* Select dropdown styling */
+.control-select {
+    flex: 0.8; /* Reduced from 1.5 to make it more compact */
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 0.9rem;
+    width: auto; /* Allow the width to be determined by content */
+    min-width: 100px; /* Set a minimum width to ensure readability */
+}
+
+/* Game status display */
+.game-status {
+    margin-top: 8px; /* Reduced from 10px to 8px */
+    background-color: #f5f5f5;
+    border-radius: 5px;
+    padding: 8px; /* Reduced from 10px to 8px */
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px; /* Reduced from 10px to 8px */
+}
+
+.status-row:last-child {
+    margin-bottom: 0;
+}
+
+#current-turn-indicator {
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+
+.review-mode .dot {
+    transition: none;
+}
+
+.review-mode .dot.new-dot {
+    animation: none;
+}
+
+.review-mode .dot.shrink {
+    transform: none;
+    opacity: 1;
+    transition: none;
+}
+
+.review-mode .yugo-highlight {
+    transition: none;
+    box-shadow: none;
+    background-color: #d1e6f9;
+}
+
+/* Utility Buttons Container positioned below game log */
+.utility-buttons-container {
+    width: 100%;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    margin-top: -10px; /* Move buttons up by 40 pixels */
+    transform: translateY(-14px); /* Additional upward movement */
+    margin-bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.utility-buttons {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box; /* Same width as the game board minus some padding */
+    transform: none;
+}
+
+.utility-buttons .btn {
+    flex: 0 1 auto;
+    margin: 0 5px; /* Reduced from 8px to 5px */
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+    padding: 8px 10px; /* Reduced from 15px to 10px horizontal padding */
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85rem; /* Reduced from 0.9rem */
+    transition: background 0.2s;
+    text-align: center;
+    min-width: 78px; 
+}
+
+.utility-buttons .btn:hover {
+    background: var(--accent-color);
+}
+
+/* Tutorial Styles */
+.tutorial-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 480px;
+    height: 600px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    z-index: 17000;
+}
+
+#tutorial-content {
+    flex: 1;
+    padding: 12px 16px 80px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#tutorial-title {
+    font-size: 1.3rem;
+    color: var(--primary-color);
+    margin-bottom: 8px;
+    line-height: 1.2;
+}
+
+#tutorial-message {
+    text-align: center;
+    margin-bottom: 10px;
+    line-height: 1.3;
+    font-size: 0.95rem;
+}
+
+#tutorial-demo {
+    height: 280px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.tutorial-demo-board {
+    display: grid;
+    gap: 1px;
+    background: #bdc3c7;
+    padding: 5px;
+    border-radius: 5px;
+    border: 2px solid #2c3e50;
+    margin: 0 auto;
+}
+
+.tutorial-demo-cell {
+    background: #d1e6f9;
+    border-radius: 2px;
+    position: relative;
+    transition: background-color 0.2s;
+    width: 100%;
+    height: 100%;
+}
+
+/* Only apply hover effects on devices with hover capability (desktop) */
+@media (hover: hover) {
+    .tutorial-demo-cell:hover {
+        background-color: #b3d4fc;
+    }
+}
+
+.tutorial-demo-dot {
+    position: absolute;
+    width: 70%;
+    height: 70%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.tutorial-demo-dot.white {
+    background: #ecf0f1;
+    border: 2px solid #2c3e50;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.tutorial-demo-dot.black {
+    background: #2c3e50;
+    border: 2px solid #1a252f;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.tutorial-demo-dot.shrink {
+    transform: scale(0);
+    opacity: 0;
+    transition: all 0.5s ease;
+}
+
+.tutorial-demo-dot.yugo::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    background-color: #e74c3c;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.tutorial-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 0 0 10px 10px;
+}
+
+.tutorial-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 16999;
+}
+
+
+
+#settings-btn {
+    display: block; /* Changed from 'none' to 'block' to make visible */
+}
+
+/* Styles for highlighted move in game log during review */
+.white-move.highlighted-move span, 
+.black-move.highlighted-move span {
+    background-color: rgba(52, 152, 219, 0.2); /* Light blue background */
+    border-radius: 2px;
+    padding: 1px 2px;
+    display: inline-block; /* Ensure the highlight only covers the actual text content */
+}
+
+/* Make sure the move text is properly displayed */
+.white-move span, .black-move span {
+    display: inline-block;
+}
+
+.game-controls-area h2 {
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.review-button-container {
+    margin-top: 0;
+    position: relative;
+}
+
+.review-button-container h2 {
+    margin-top: 0;
+}
+
+.review-button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-left: 23px; /* Increased from 8px to 23px (15px more to the right) */
+    position: relative;
+    top: -3px; /* Move 3px up */
+    display: none; /* Hidden by default */
+}
+
+.review-button:hover {
+    background-color: #2980b9;
+}
+
+
+
+.core-avatar {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+    display: none;
+}
+
+.core-orb {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: absolute;
+    background: radial-gradient(circle at 30% 30%, 
+        rgba(50, 70, 100, 0.3) 0%,
+        rgba(30, 50, 80, 0.5) 50%,
+        rgba(20, 40, 70, 0.7) 100%);
+    box-shadow: 
+        0 0 20px rgba(30, 50, 80, 0.4),
+        inset 0 0 30px rgba(100, 120, 150, 0.3);
+    animation: orbPulse 3.5s ease-in-out infinite;
+}
+
+.core-dots {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px; /* Reduced from 10px to 6px to bring dots closer together */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin-top: 4px; /* Changed from 8px to 4px to move dots up by 4px */
+}
+
+.core-dot {
+    width: 12px;
+    height: 12px;
+    background: #1a4b8c;
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 10px rgba(26, 75, 140, 0.5);
+}
+
+.core-dot:nth-child(1) { 
+    animation: waveFloat 4s ease-in-out infinite; /* Changed from 3s to 4s */
+}
+
+.core-dot:nth-child(2) { 
+    animation: waveFloat 4s ease-in-out infinite 0.5s; /* Changed from 3s to 4s */
+}
+
+.core-dot:nth-child(3) { 
+    animation: waveFloat 4s ease-in-out infinite 1s; /* Changed from 3s to 4s */
+}
+
+@keyframes waveFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); } /* Reduced from -15px to -10px */
+}
+
+/* Update reaction state to maintain wave animation */
+.core-avatar.reacting .core-dot:nth-child(1) { 
+    animation: waveFloat 4s ease-in-out infinite;
+}
+
+.core-avatar.reacting .core-dot:nth-child(2) { 
+    animation: waveFloat 4s ease-in-out infinite 0.5s;
+}
+
+.core-avatar.reacting .core-dot:nth-child(3) { 
+    animation: waveFloat 4s ease-in-out infinite 1s;
+}
+
+/* Update waiting state to maintain wave animation */
+.core-avatar.waiting .core-dot {
+    animation: waveFloat 4s ease-in-out infinite;
+}
+
+.core-avatar.waiting .core-dot:nth-child(1) { animation-delay: 0s; }
+.core-avatar.waiting .core-dot:nth-child(2) { animation-delay: 0.5s; }
+.core-avatar.waiting .core-dot:nth-child(3) { animation-delay: 1s; }
+
+@keyframes orbPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.95); opacity: 0.8; }
+}
+
+/* Dynamic breathing animation based on game state */
+.core-avatar.behind .core-orb {
+    animation: orbPulseFast 2s ease-in-out infinite;
+}
+
+.core-avatar.ahead .core-orb {
+    animation: orbPulseSlow 5s ease-in-out infinite;
+}
+
+@keyframes orbPulseFast {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.92); opacity: 0.7; }
+}
+
+@keyframes orbPulseSlow {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.97); opacity: 0.9; }
+}
+
+/* Thinking state with darker colors */
+.core-avatar.thinking .core-orb {
+    background: radial-gradient(circle at 30% 30%, 
+        rgba(40, 60, 90, 0.4) 0%,
+        rgba(20, 40, 70, 0.6) 50%,
+        rgba(10, 30, 60, 0.8) 100%);
+    box-shadow: 
+        0 0 25px rgba(20, 40, 70, 0.5),
+        inset 0 0 35px rgba(80, 100, 130, 0.4);
+}
+
+/* Reaction state with darker colors */
+.core-avatar.reacting .core-orb {
+    background: radial-gradient(circle at 30% 30%, 
+        rgba(60, 80, 110, 0.5) 0%,
+        rgba(40, 60, 90, 0.7) 50%,
+        rgba(20, 40, 70, 0.9) 100%);
+    box-shadow: 
+        0 0 30px rgba(40, 60, 90, 0.6),
+        inset 0 0 40px rgba(100, 120, 150, 0.5);
+}
+
+/* Reaction state */
+.core-avatar.reacting .core-dot:nth-child(1) { 
+    top: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    animation: waveFloat 4s ease-in-out infinite;
+}
+
+.core-avatar.reacting .core-dot:nth-child(2) { 
+    top: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    animation: waveFloat 4s ease-in-out infinite 0.5s;
+}
+
+.core-avatar.reacting .core-dot:nth-child(3) { 
+    top: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    animation: waveFloat 4s ease-in-out infinite 1s;
+}
+
+/* Waiting state */
+.core-avatar.waiting .core-dot {
+    top: 34px;
+    transition: all 0.3s ease;
+}
+
+.core-avatar.waiting .core-dot:nth-child(1) { left: 20px; }
+.core-avatar.waiting .core-dot:nth-child(2) { left: 34px; }
+.core-avatar.waiting .core-dot:nth-child(3) { left: 48px; }
+
+@keyframes blinkDots {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.core-avatar.waiting .core-dot {
+    animation: blinkDots 0.5s ease-in-out;
+}
+
+.core-level {
+    position: absolute;
+    bottom: -35px;  /* Changed from -25px to -35px to move it down 10px */
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    color: var(--primary-color);
+    font-weight: bold;
+    text-align: center;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Add specific styling for black pieces in dark mode */
+[data-theme="dark"] .dot.black {
+    border: 2px solid #666666;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .player-color.black {
+    border: 2px solid #666666;
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 2px 3px rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .player.active .player-color.black {
+    box-shadow: 
+        0 3px 12px rgba(0, 0, 0, 0.4),
+        inset 0 2px 5px rgba(255, 255, 255, 0.3),
+        0 0 15px rgba(102, 102, 102, 0.3);
+}
+
+.cell-row-label {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-size: 0.85rem;
+    color: #888;
+    pointer-events: none;
+    z-index: 3;
+    font-family: monospace;
+    opacity: 0.85;
+}
+
+.cell-col-label {
+    position: absolute;
+    bottom: 4px;
+    right: 6px;
+    font-size: 0.85rem;
+    color: #888;
+    pointer-events: none;
+    z-index: 3;
+    font-family: monospace;
+    opacity: 0.85;
+}
+
+.top-button-row {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    margin-bottom: 5px; /* 5px gap below top buttons */
+}
+
+.top-button-row .btn,
+.utility-buttons-container .btn {
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    line-height: 40px;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+/* Root level touch-action and user-select properties */
+html, body {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Ensure game board and controls don't trigger zoom */
+.game-board-area, .board, .review-controls, .btn {
+    /* touch-action and -webkit-touch-callout inherited from html, body */
+    cursor: pointer;
+}
+
+/* Ensure review mode controls are properly touch-enabled */
+.review-controls .btn {
+    /* touch-action and -webkit-touch-callout inherited from html, body */
+    cursor: pointer;
+}
+
+/* Fixed height for pregame controls */
+#pregame-controls {
+    height: 136px;
+    min-height: 136px;
+    max-height: 136px;
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+/* When AI color selection is present (2 buttons only, no random) */
+#pregame-controls:has(.color-choice-btn) {
+    height: 180px;
+    min-height: 180px;
+    max-height: 180px;
+}
+
+.pregame-controls-hidden {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Mobile controls styling */
+.mobile-only {
+    display: none;
+}
+
+.mobile-controls-button {
+    display: none;
+}
+/* Review section styles - positioned at bottom of container */
+#review-section {
+    position: relative;    /* Not absolute */
+    width: 100%;
+    max-width: 236px;
+    margin: 10px auto 0;
+    padding: 4px;
+    background: #fff;
+    border-top: 1px solid #ccc;
+    box-shadow: 0 -2px 6px rgba(0,0,0,.06);
+    z-index: 10;
+    box-sizing: border-box;
+    flex-shrink: 0;        /* Don't let it shrink */
+}
+/* Desktop review section button styles */
+#review-section .btn {
+    border-radius: 1px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ccc;
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+#review-section .btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+/* Scrollbar styles */
+.game-log::-webkit-scrollbar {
+    width: 8px;
+}
+
+.game-log::-webkit-scrollbar-thumb {
+    background-color: #bbb;
+    border-radius: 4px;
+}
+
+/* Additional mobile breakpoints for better small phone support */
+@media (max-width: 480px) {
+    :root {
+        --cell-size: calc(92vw / 8) !important;
+    }
+    
+    .game-board-area {
+        width: 92vw !important;
+        max-width: 92vw !important;
+    }
+    
+    body {
+        padding-bottom: 130px !important;
+        padding-bottom: calc(130px + env(safe-area-inset-bottom)) !important;
+    }
+    
+    #mobile-action-bar {
+        bottom: 65px !important;
+        padding: 6px 0 4px 0 !important;
+    }
+    
+    #mobile-action-bar .btn {
+        font-size: 1em !important;
+        padding: 0.6em 0 !important;
+    }
+    
+    #mobile-utility-bar .btn {
+        font-size: 1em !important;
+        padding: 0.6em 0 !important;
+    }
+    
+    .player-timer {
+        margin-left: auto !important;
+        font-size: 0.95rem !important;
+        position: static !important;
+        top: auto !important;
+    }
+    
+    header h1 {
+        font-size: 1.8em !important;
+    }
+}
+
+/* Ultra-small phones and landscape mode */
+@media (max-width: 400px), (max-height: 600px) and (max-width: 600px) {
+    :root {
+        --cell-size: calc(90vw / 8) !important;
+    }
+    
+    .game-board-area {
+        width: 90vw !important;
+        max-width: 90vw !important;
+    }
+    
+    body {
+        padding-bottom: 140px !important;
+        padding-bottom: calc(140px + env(safe-area-inset-bottom)) !important;
+    }
+    
+    header {
+        padding: 0.3em 0 0.1em 0 !important;
+        padding-top: calc(env(safe-area-inset-top) + 0.3em) !important;
+    }
+    
+    header h1 {
+        font-size: 1.6em !important;
+        margin-bottom: 2px !important;
+    }
+    
+    .player-info, .player-info.bottom {
+        height: 35px !important;
+        min-height: 35px !important;
+        max-height: 35px !important;
+        font-size: 0.9em;
+    }
+    
+    .player-color {
+        width: 20px !important;
+        height: 20px !important;
+    }
+    
+    .player-timer {
+        margin-left: auto !important;
+        font-size: 0.9rem !important;
+        position: static !important;
+        top: auto !important;
+    }
+    
+    #mobile-action-bar {
+        bottom: 70px !important;
+        padding: 5px 0 3px 0 !important;
+    }
+    
+    #mobile-action-bar .btn {
+        font-size: 0.95em !important;
+        padding: 0.5em 0 !important;
+        margin: 0 6px !important;
+    }
+    
+    #mobile-utility-bar {
+        padding: 5px 0 3px 0 !important;
+    }
+    
+    #mobile-utility-bar .btn {
+        font-size: 0.95em !important;
+        padding: 0.5em 0 !important;
+        margin: 0 6px !important;
+    }
+}
+
+/* Dynamic viewport height handling for very constrained screens */
+@media (max-height: 500px) and (max-width: 600px) {
+    body {
+        padding-bottom: 110px !important;
+        padding-bottom: calc(110px + env(safe-area-inset-bottom)) !important;
+    }
+    
+    header {
+        padding: 0.2em 0 0.1em 0 !important;
+        padding-top: calc(env(safe-area-inset-top) + 0.2em) !important;
+    }
+    
+    header h1 {
+        font-size: 1.4em !important;
+        margin-bottom: 1px !important;
+    }
+    
+    .player-info, .player-info.bottom {
+        height: 30px !important;
+        min-height: 30px !important;
+        max-height: 30px !important;
+        font-size: 0.8em;
+        padding: 0 8px !important;
+    }
+    
+    .player-color {
+        width: 18px !important;
+        height: 18px !important;
+    }
+    
+    .player-timer {
+        margin-left: auto !important;
+        font-size: 0.85rem !important;
+        position: static !important;
+        top: auto !important;
+    }
+    
+    #mobile-action-bar {
+        bottom: 55px !important;
+        padding: 4px 0 2px 0 !important;
+    }
+    
+    #mobile-action-bar .btn {
+        font-size: 0.9em !important;
+        padding: 0.4em 0 !important;
+    }
+    
+    #mobile-utility-bar {
+        padding: 4px 0 2px 0 !important;
+    }
+    
+    #mobile-utility-bar .btn {
+        font-size: 0.9em !important;
+        padding: 0.4em 0 !important;
+    }
+    
+    :root {
+        --cell-size: calc(88vw / 8) !important;
+    }
+    
+    .game-board-area {
+        width: 88vw !important;
+        max-width: 88vw !important;
+    }
+}
+
+/* iPhone 12 Pro specific fixes */
+@media (max-width: 390px) and (max-height: 844px) {
+    .player-info,
+    .player-info.bottom {
+        margin: -2px auto !important;
+        border-radius: 5px 5px 0 0 !important;
+        width: 96vw !important;
+        max-width: calc(var(--board-size) + 4px) !important;
+        padding: 0 6px !important;
+        box-sizing: border-box !important;
+    }
+
+    .player-info.bottom {
+        margin-top: -2px !important;
+        border-radius: 0 0 5px 5px !important;
+    }
+    
+    .player-timer {
+        margin-left: auto !important;
+        font-size: 0.9rem !important;
+        position: static !important;
+        top: auto !important;
+    }
+}
+
+/* Mobile flush layout - ensure player info bars are flush with board */
+@media (max-width: 600px) {
+    .player-info,
+    .player-info.bottom {
+        border-radius: 0 !important;
+        margin: 0 !important;
+        /* width: 641px !important; */
+        width: calc(var(--board-size) + 1px) !important;
+    }
+
+    .player-info.bottom {
+        margin-top: -23px !important;
+    }
+
+    .game-board-area {
+        gap: 0 !important;
+        border: 2px solid var(--secondary-color) !important;
+        border-radius: 0 !important;
+        width: calc(96vw + 4px) !important;
+    }
+
+    .board {
+        border: none !important;
+    }
+
+    .board-with-labels {
+        border: none !important;
+        border-radius: 0 !important;
+        width: var(--board-size) !important;
+    }
+}
+
+/* Override all mobile game-board-area widths to include border space */
+@media (max-width: 600px) {
+    .game-board-area {
+        width: calc(96vw + 4px) !important;
+        max-width: calc(96vw + 4px) !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-board-area {
+        width: calc(92vw + 4px) !important;
+        max-width: calc(92vw + 4px) !important;
+    }
+}
+
+@media (max-width: 400px), (max-height: 600px) and (max-width: 600px) {
+    .game-board-area {
+        width: calc(90vw + 4px) !important;
+        max-width: calc(90vw + 4px) !important;
+    }
+}
+
+@media (max-height: 500px) and (max-width: 600px) {
+    .game-board-area {
+        width: calc(88vw + 4px) !important;
+        max-width: calc(88vw + 4px) !important;
+    }
+}
+
+/* Mobile button positioning - single container with relative positioning */
+@media (max-width: 600px) {
+    #mobile-button-container {
+        position: relative !important;
+        margin-top: 10px !important;
+        width: 100vw;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #mobile-action-bar {
+        position: relative !important;
+        bottom: auto !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+        border-bottom: none !important;
+    }
+
+    #mobile-utility-bar {
+        position: relative !important;
+        bottom: auto !important;
+        margin-top: 0 !important;
+        border-top: none !important;
+    }
+
+    body {
+        padding-bottom: 20px !important;
+    }
+}
+
+/* Force portrait orientation - hide content in landscape on mobile */
+@media (max-width: 600px) and (orientation: landscape) {
+    body::before {
+        content: "To play MigoYugo, please rotate to portrait mode";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        text-align: center;
+        z-index: 9999;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+    
+    .game-container {
+        display: none !important;
+    }
+    
+    header {
+        display: none !important;
+    }
+}
+
+/* Disable hover effects on mobile devices */
+@media (max-width: 600px) {
+    .cell:hover,
+    .tutorial-demo-cell:hover {
+        background-color: var(--board-color) !important;
+    }
+}
+
+/* Mobile Review Bar Restructure - Override existing styles */
+@media (max-width: 600px) {
+    #mobile-review-bar {
+        flex-direction: column !important;
+        padding: 8px 0 6px 0 !important;
+    }
+
+    #mobile-review-bar .review-buttons {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
+        margin-bottom: 4px;
+    }
+
+    #mobile-review-bar .move-counter {
+        margin: 0 !important;
+        flex-shrink: 1 !important;
+    }
+}
+
+/* Duplicate review section styles removed - see earlier definition around line 2380 */
+
+/* Mobile responsive review section */
+@media (max-width: 600px) {
+    #review-section {
+        width: calc(100% - 8px);
+        max-width: calc(100% - 8px);
+        margin: 10px auto 10px auto;
+        padding: 6px 4px;
+    }
+    
+    .review-controls {
+        width: 100%;
+        gap: 2px;
+        padding: 2px;
+        flex-wrap: nowrap;
+    }
+    
+    .review-controls .btn {
+        min-width: 32px;
+        max-width: 32px;
+        height: 32px;
+        font-size: 14px;
+        padding: 0;
+        border-radius: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .review-controls #first-move-btn,
+    .review-controls #prev-move-btn,
+    .review-controls #next-move-btn,
+    .review-controls #last-move-btn {
+        min-width: 32px;
+        max-width: 32px;
+        height: 32px;
+        font-size: 16px;
+        padding: 0;
+        border-radius: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .move-counter {
+        font-size: 0.85rem;
+        min-width: 60px;
+        padding: 0 4px;
+        flex-shrink: 1;
+    }
+    
+    #review-section > div:last-child {
+        margin-top: 6px;
+        text-align: center;
+    }
+    
+    #review-section .btn {
+        font-size: 13px !important;
+        padding: 6px 14px !important;
+        white-space: nowrap;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 400px) {
+    #review-section {
+        width: calc(100% - 4px);
+        margin: 8px auto 8px auto;
+        padding: 4px 2px;
+    }
+    
+    .review-controls {
+        gap: 1px;
+    }
+    
+    .review-controls .btn {
+        min-width: 28px;
+        max-width: 28px;
+        height: 28px;
+        font-size: 12px;
+        padding: 0;
+        border-radius: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .review-controls #first-move-btn,
+    .review-controls #prev-move-btn,
+    .review-controls #next-move-btn,
+    .review-controls #last-move-btn {
+        min-width: 28px;
+        max-width: 28px;
+        height: 28px;
+        font-size: 14px;
+        padding: 0;
+        border-radius: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .move-counter {
+        font-size: 0.75rem;
+        min-width: 50px;
+        padding: 0 2px;
+    }
+    
+    #review-section .btn {
+        font-size: 12px !important;
+        padding: 5px 10px !important;
+    }
+}
+
+/* Tablet responsive review section */
+@media (min-width: 601px) and (max-width: 1024px) {
+    #review-section {
+        width: calc(100% - 20px);
+        max-width: 100%;
+        margin: 10px auto;
+    }
+    
+    .review-controls {
+        width: 100%;
+        gap: 3px;
+    }
+    
+    .review-controls .btn {
+        min-width: 32px;
+        max-width: 32px;
+        height: 32px;
+        font-size: 14px;
+        padding: 0;
+        border-radius: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .move-counter {
+        font-size: 0.8rem;
+        min-width: 70px;
+    }
+}
+
+/* Small tablets and large phones */
+@media (min-width: 601px) and (max-width: 768px) {
+    .game-log {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    #review-section {
+        width: calc(100% - 12px);
+        margin: 10px auto;
+    }
+}
+
+/* iPad Air and similar (820px) */
+@media (min-width: 769px) and (max-width: 820px) {
+    #review-section {
+        width: calc(100% - 16px);
+        margin: 10px auto;
+    }
+}
+/* iPad Air 820x1180 Portrait - Hide sidebar, show hamburger */
+@media (min-width: 769px) and (max-width: 820px) and (orientation: portrait),
+       (width: 820px) and (height: 1180px) {
+    
+    /* Show hamburger menu */
+    .mobile-menu-toggle {
+        display: flex !important;
+    }
+    
+    /* Hide sidebar by default, slide in when opened */
+    .sidebar {
+        width: 280px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    /* Overlay for when sidebar is open */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 3999;
+        display: none;
+    }
+    
+    .sidebar-overlay.active {
+        display: block;
+    }
+    
+    /* Remove left margin from main content since sidebar is hidden */
+    .main-content {
+        margin-left: 0 !important;
+    }
+    
+    /* Adjust game container to use full width */
+    .game-container {
+        margin-left: 0 !important;
+    }
+    
+    #review-section {
+        width: calc(100% - 16px);
+        margin: 10px auto;
+    }
+        /* Adjust game container to use full width */
+        .game-container {
+            margin-left: 0 !important;
+        }
+        
+        /* Show Back to Home button on mobile game page - small and unobtrusive */
+        .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+            display: block !important;
+            position: fixed !important;
+            top: calc(env(safe-area-inset-top) + 0.3em) !important;
+            left: 10px !important;
+            z-index: 1001 !important;
+        }
+
+        /* Make the button smaller and more subtle on mobile */
+        .game-page header > div[style*="position: fixed"][style*="left: 210px"] button {
+            padding: 4px 8px !important;
+            font-size: 11px !important;
+            border-radius: 4px !important;
+            opacity: 0.7 !important;
+        }
+
+        /* Hide Back to Home button on landing page - hamburger menu provides navigation */
+        .landing-page header > div[style*="position: fixed"][style*="left: 210px"] {
+            display: none !important;
+        }
+        
+        /* Move game board and controls to top */
+        .game-container {
+            display: flex;
+            align-items: flex-start !important;  /* Align to top */
+            justify-content: center;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        
+        .game-board-area {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start !important;  /* Align to top */
+            align-items: center;
+            margin-top: 0 !important;
+        }
+        
+        .game-controls-area {
+            margin-top: 0 !important;  /* Align to top */
+        }
+        
+        /* Reduce header spacing to make more room */
+        header {
+            padding: 0.2em 0 !important;
+            padding-top: calc(env(safe-area-inset-top) + 0.2em) !important;
+            margin-bottom: 2px !important;
+        }
+        
+        h1 {
+            margin-bottom: 2px !important;
+        }
+        
+    body:not(.landing-page) {
+        padding-top: calc(env(safe-area-inset-top) + 5px) !important;
+    }
+       
+    }
+
+/* iPad Standard (768x1024) Portrait Mode - Optimized Layout */
+@media (min-width: 768px) and (max-width: 768px) and (orientation: portrait),
+       (width: 768px) and (height: 1024px) {
+    
+        :root {
+            --cell-size: 58px;  /* Smaller board to fit iPad 768x1024 */
+        }
+    
+        body:not(.landing-page) {
+            overflow: hidden;
+            height: 100vh;
+            padding: 6px;  /* Reduced padding */
+        }
+    
+    header {
+        padding: 0.25em 0;
+        padding-top: calc(env(safe-area-inset-top) + 0.25em);
+        margin-bottom: 4px;
+    }
+    
+    h1 {
+        font-size: 1.8rem;
+        margin-bottom: 4px;
+    }
+       /* Show Back to Home button on mobile game page - small and unobtrusive */
+       .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+            display: block !important;
+            position: fixed !important;
+            top: calc(env(safe-area-inset-top) + 0.3em) !important;
+            left: 10px !important;
+            z-index: 1001 !important;
+        }
+
+        /* Make the button smaller and more subtle on mobile */
+        .game-page header > div[style*="position: fixed"][style*="left: 210px"] button {
+            padding: 4px 8px !important;
+            font-size: 11px !important;
+            border-radius: 4px !important;
+            opacity: 0.7 !important;
+        }
+
+        /* Hide Back to Home button on landing page - hamburger menu provides navigation */
+        .landing-page header > div[style*="position: fixed"][style*="left: 210px"] {
+            display: none !important;
+        }
+    .game-container {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;  /* Reduced gap */
+        max-width: 100%;
+        height: calc(100vh - 70px);  /* More height available */
+        align-items: flex-start;
+        justify-content: center;
+        margin-top: 0;
+    }
+      /* Game board area */
+      .game-board-area {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;  /* Changed from center to flex-start */
+        align-items: center;
+        margin-top: 0;  /* Align to top with controls */
+    }
+    
+    .board {
+        width: var(--board-size);
+        height: var(--board-size);
+    }
+    
+    .player-info,
+    .player-info.bottom {
+        width: var(--board-size);
+        height: 34px;
+        min-height: 34px;
+        max-height: 34px;
+    }
+    
+    /* Game controls area */
+    .game-controls-area {
+        width: 200px;
+        min-width: 200px;
+        max-width: 200px;
+        height: calc(var(--board-size) + 4px);
+        min-height: calc(var(--board-size) + 4px);
+        max-height: calc(var(--board-size) + 4px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        margin-top: -2px;
+    }
+    
+    #pregame-controls, 
+    #ingame-controls {
+        height: auto;
+        min-height: 100px;
+        max-height: 120px;
+        padding: 8px;
+        flex-shrink: 0;
+    }
+    
+    /* Player buttons */
+    .player-buttons {
+        gap: 1px;
+    }
+    .player-buttons .btn {
+        font-size: 0.75rem;
+        padding: 2px 4px;         /* Minimal horizontal padding */
+        max-width: 30%;           /* Limit width to 70% */
+    }
+    
+    /* Move Reset button to the left */
+    .player-buttons .btn:last-child {
+        transform: translateX(-95px);  /* Move Reset button 15px to the left */
+    }
+    
+    /* Move Reset button to the left */
+    .player-buttons .btn:first-child {
+        transform: translateX(15px);  /* Move Reset button 15px to the left */
+    }
+       /* Game log container */
+       #game-log-container {
+        position: relative;
+        flex: 1;
+        margin: 15px 0 0 0;  /* Added 15px top margin to move it down */
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0 8px;
+    }
+    .game-log {
+        width: 100%;
+        max-width: 100%;
+        height: 368px;              /* Changed from 320px (+15%) */
+        min-height: 368px;          /* Changed from 320px (+15%) */
+        max-height: 368px;          /* Changed from 320px (+15%) */
+        margin: 0;
+        overflow-y: auto;
+        font-size: 0.9rem;
+    }
+    
+    /* Review section */
+    #review-section {
+        width: 100%;
+        max-width: 100%;
+        margin: 8px auto 0;
+        padding: 4px;
+        flex-shrink: 0;
+    }
+    
+    .review-controls {
+        flex-wrap: nowrap;
+        gap: 2px;
+        padding: 2px;
+    }
+    
+    .review-controls .btn {
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
+        font-size: 12px;
+    }
+    
+    .move-counter {
+        height: 26px;
+        min-width: 55px;
+        font-size: 0.7rem;
+        padding: 0 4px;
+    }
+    .utility-buttons-container {
+        padding: 4px 6px 4px 1px;  /* Further reduced vertical padding */
+        min-height: 50px;           /* Reduced from 45px */
+        max-height: 50px;           /* Reduced from 55px */
+    }
+    
+    .utility-buttons {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        flex-shrink: 0;
+        justify-content: space-between;
+    }
+    
+    .utility-buttons .btn {
+        flex: 1;
+        min-width: 45px;             /* Reduced from 50px */
+        max-width: 65px;             /* Limit maximum width */
+        font-size: 0.58rem;          /* Slightly smaller font */
+        padding: 2px 3px;            /* Minimal horizontal padding */
+        margin: 0;
+        white-space: nowrap;
+        height: 26px;                
+        min-height: 26px;            
+        max-height: 26px;            
+        line-height: 1.1;            
+        display: flex;               
+        align-items: center;         
+        justify-content: center;     
+        transform: scaleX(0.85);     /* Reduce width by 15% */
+    }
+    /* Move Settings button (last button) to the left */
+    .utility-buttons .btn:last-child {
+        transform: scaleX(0.85) translateX(-70%);  /* Keep scale AND move left by 20% */
+    }
+    /* Move Settings button (last button) to the left */
+    .utility-buttons .btn:nth-child(2) {
+        transform: scaleX(0.85) translateX(-35%);  /* Keep scale AND move left by 20% */
+    }
+    
+    
+    /* Timer settings */
+    .timer-settings {
+        margin: 8px 0;
+    }
+    
+    .timer-row {
+        gap: 6px;
+    }
+    
+    .option-cell label {
+        font-size: 0.8rem;
+    }
+    
+    .control-select {
+        font-size: 0.85rem;
+        padding: 4px;
+    }
+    
+    /* Tutorial and modal adjustments */
+    .tutorial-popup,
+    .notification {
+        max-width: 90vw;
+        max-height: 85vh;
+    }
+    
+    #tutorial-popup #tutorial-content {
+        max-height: calc(85vh - 100px);
+        overflow-y: auto;
+    }
+    
+    /* Hide mobile controls */
+    #mobile-action-bar,
+    #mobile-utility-bar {
+        display: none !important;
+    }
+    
+    /* Touch-friendly adjustments */
+    .btn {
+        min-height: 32px;
+        touch-action: manipulation;
+    }
+    
+    .cell {
+        touch-action: manipulation;
+    }
+}
+/* iPad Pro and larger tablets (1024px) */
+@media (min-width: 821px) and (max-width: 1024px) {
+    #review-section {
+        width: calc(100% - 16px);
+        margin: 10px auto;
+    }
+}
+/* iPad Pro 12.9" (1024x1366) Portrait Mode - Hide sidebar, show hamburger */
+@media (min-width: 1024px) and (max-width: 1024px) and (orientation: portrait),
+       (width: 1024px) and (height: 1366px) {
+    
+    /* Show hamburger menu */
+    .mobile-menu-toggle {
+        display: flex !important;
+    }
+    
+    /* Hide sidebar by default, slide in when opened */
+    .sidebar {
+        width: 280px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    /* Overlay for when sidebar is open */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 3999;
+        display: none;
+    }
+    
+    .sidebar-overlay.active {
+        display: block;
+    }
+    
+    /* Remove left margin from main content since sidebar is hidden */
+    .main-content {
+        margin-left: 0 !important;
+    }
+    
+    /* Show Back to Home button on mobile game page - small and unobtrusive */
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        display: block !important;
+        position: fixed !important;
+        top: calc(env(safe-area-inset-top) + 0.3em) !important;
+        left: 10px !important;
+        z-index: 1001 !important;
+    }
+
+    /* Make the button smaller and more subtle on mobile */
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] button {
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+        border-radius: 4px !important;
+        opacity: 0.7 !important;
+    }
+
+    /* Hide Back to Home button on landing page - hamburger menu provides navigation */
+    .landing-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        display: none !important;
+    }
+    
+       /* Adjust game container and shift to the right by 20% */
+       .game-container {
+        margin-left: 0 !important;
+        max-width: 100% !important;
+        transform: translateX(10%) !important;  /* Shift right by 20% */
+    }
+    
+    #review-section {
+        width: calc(100% - 16px);
+        margin: 10px auto;
+    }
+}
+
+/* Scrollbar styles */
+/* Scrollbar styles */
+.game-log::-webkit-scrollbar {
+    width: 8px;
+}
+
+.game-log::-webkit-scrollbar-thumb {
+    background-color: #bbb;
+    border-radius: 4px;
+}
+
+/* ==================== DESKTOP & LAPTOP RESPONSIVE STYLES ==================== */
+
+/* Base Desktop Styles (1000px - 1280px) - Small laptops */
+@media (min-width: 1000px) and (max-width: 1280px) {
+    :root {
+        --cell-size: max(50px, min(7vh, calc((100vw - 400px) / 8)));
+    }
+    
+    body:not(.landing-page) {
+        overflow: hidden;
+        height: 100vh;
+        padding: 6px;
+    }
+    
+    header {
+        padding: 0.2em 0;
+        padding-top: calc(env(safe-area-inset-top) + 0.2em);
+        margin-bottom: 3px;
+    }
+    
+    h1 {
+        font-size: clamp(1.6rem, 2.5vw, 1.9rem);
+        margin-bottom: 3px;
+    }
+    
+    .game-container {
+        gap: 12px;
+        margin-top: 0;
+        max-width: 100%;
+        justify-content: center;
+        height: calc(100vh - 80px);
+        align-items: stretch;
+    }
+    
+    .game-controls-area {
+        width: 240px;
+        min-width: 240px;
+        max-width: 240px;
+        height: calc(var(--board-size) + 4px) !important;
+        min-height: calc(var(--board-size) + 4px) !important;
+        max-height: calc(var(--board-size) + 4px) !important;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    /* Perfect top alignment with game board */
+.game-controls-area {
+    margin-top: -2px !important;
+}
+    #pregame-controls, #ingame-controls {
+        height: auto;
+        min-height: 100px;
+        max-height: 120px;
+        padding: 8px;
+        flex-shrink: 0;
+    }
+    
+    #game-log-container {
+        position: relative;
+        flex: 1;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0 8px;
+    }
+    
+    .game-log {
+        width: 100%;
+        height: 253px;              /* Changed from 220px (+15%) */
+        min-height: 253px;          /* Changed from 220px (+15%) */
+        max-height: 253px;          /* Changed from 220px (+15%) */
+        margin: 0;
+        overflow-y: auto;
+    }
+    .player-info,
+    .player-info.bottom {
+        height: 32px;
+        min-height: 32px;
+        max-height: 32px;
+    }
+    
+    .review-controls {
+        flex-wrap: nowrap;
+        gap: 2px;
+        padding: 2px;
+    }
+    
+    .review-controls .btn {
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
+        font-size: 12px;
+    }
+    
+    .move-counter {
+        height: 26px;
+        min-width: 55px;
+        font-size: 0.7rem;
+        padding: 0 3px;
+    }
+    
+    #review-section {
+        width: 100%;
+        max-width: 220px;
+        margin: 0 auto;
+        padding: 4px;
+        flex-shrink: 0;
+    }
+    
+    .utility-buttons-container {
+        padding: 10px;
+        min-height: 55px;
+        max-height: 65px;
+    }
+    
+    .utility-buttons {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        flex-shrink: 0;
+        justify-content: space-between;
+    }
+    
+    .utility-buttons .btn {
+        flex: 1;
+        min-width: 78px;
+        font-size: 0.75rem;
+        padding: 8px 12px;
+        margin: 0;
+        transform: translateY(5px);
+        white-space: nowrap;
+    }
+    
+    /* Move tutorial content upward for 1280x720 and 1280x800 */
+    #tutorial-content {
+        padding: 6px 16px 30px 16px !important;
+    }
+
+    #tutorial-title {
+        margin-bottom: 2px !important;
+    }
+
+    #tutorial-message {
+        margin-bottom: 4px !important;
+    }
+
+    #tutorial-demo {
+        height: 260px !important;
+        margin: 2px 0 !important;
+    }
+
+    .tutorial-navigation {
+        padding: 8px !important;
+    }
+}
+
+/* Medium Desktop Styles (1281px - 1439px) - Standard laptops */
+@media (min-width: 1281px) and (max-width: 1439px) {
+    :root {
+        --cell-size: max(58px, min(8vh, calc((100vw - 400px) / 8)));
+    }
+    
+    body:not(.landing-page) {
+        overflow: hidden;
+        height: 100vh;
+        padding: 8px;
+    }
+    
+    header {
+        padding: 0.25em 0;
+        padding-top: calc(env(safe-area-inset-top) + 0.25em);
+        margin-bottom: 4px;
+    }
+    
+    h1 {
+        font-size: clamp(1.8rem, 2.8vw, 2.0rem);
+        margin-bottom: 4px;
+    }
+    
+    .game-container {
+        gap: 14px;
+        margin-top: 0;
+        max-width: 100%;
+        justify-content: center;
+        height: calc(100vh - 90px);
+        align-items: stretch;
+    }
+    
+    .game-controls-area {
+        width: 260px;
+        min-width: 260px;
+        max-width: 260px;
+        height: calc(var(--board-size) + 5px) !important;
+        min-height: calc(var(--board-size) + 5px) !important;
+        max-height: calc(var(--board-size) + 5px) !important;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    /* Perfect top alignment with game board */
+.game-controls-area {
+    margin-top: -4px !important;
+}
+/* Decrease Start and Reset button width and move right */
+.player-buttons .btn.action-btn {
+    transform: scaleX(0.85) translateX(-10px) !important;  /* Scale width to 85% and shift right 10px */
+} #pregame-controls, #ingame-controls {
+        height: auto;
+        min-height: 110px;
+        max-height: 130px;
+        padding: 10px;
+        flex-shrink: 0;
+    }
+    
+    #game-log-container {
+        position: relative;
+        flex: 1;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0 10px;
+    }
+    
+    .game-log {
+        width: 100%;
+        flex: 1;
+        min-height: 230px;          /* Changed from 200px (+15%) */
+        max-height: 100%;
+        margin: 0;
+        overflow-y: auto;
+    }
+/* Move entire game log section down including h2 heading */
+#game-log-container {
+    margin-top: 15px !important;
+}
+   /* Move game log down for 1366x768 */
+    .player-info,
+    .player-info.bottom {
+        height: 36px;
+        min-height: 36px;
+        max-height: 36px;
+    }
+    
+    .review-controls {
+        flex-wrap: nowrap;
+        /* gap: 2px; */
+        padding: 3px;
+    }
+    
+    .review-controls .btn {
+        margin: 0 -8px;
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        font-size: 13px;
+    }
+    
+    .move-counter {
+        height: 28px;
+        min-width: 60px;
+        font-size: 0.75rem;
+        padding: 0 4px;
+    }
+    
+    #review-section {
+        width: 100%;
+        max-width: 240px;
+        margin: 0 auto;
+        padding: 5px;
+        flex-shrink: 0;
+    }
+    
+    .utility-buttons-container {
+        padding: 14px 14px 14px 1px;
+        height:70px;
+        min-height: 60px;
+        max-height: 70px;
+    }
+    
+    .utility-buttons {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        flex-shrink: 0;
+        justify-content: space-between;
+    }
+    
+    .utility-buttons .btn {
+        flex: 1;
+        min-width: 79px;              /* Reduced from 78px */
+        font-size: 0.78rem;           /* Slightly smaller font */
+        padding: 8px 12px;            /* Reduced padding */
+        margin: 0;
+        white-space: nowrap;
+    }
+    /* Reduce utility button height for 1366x768 */
+.utility-buttons .btn {
+    transform: scaleY(0.95) !important;  /* Scale height to 85% */
+}
+    /* Tutorial modal scrolling for 1366x768 */
+.tutorial-popup {
+    max-height: 75vh !important;
+    height: auto !important;
+}
+
+    /* Move tutorial content upward for 1366x768 */
+    #tutorial-popup #tutorial-content {
+        max-height: calc(90vh - 100px) !important;
+        overflow-y: auto !important;
+        padding: 6px 16px 30px 16px !important;
+    }
+
+    #tutorial-title {
+        margin-bottom: 2px !important;
+    }
+
+    #tutorial-message {
+        margin-bottom: 4px !important;
+    }
+
+    #tutorial-demo {
+        height: 350px !important;
+        margin: 2px 0 !important;
+    }
+
+    .tutorial-navigation {
+        padding: 8px !important;
+    }
+
+    /* Specific adjustments for "Building a Yugo" page - shift animation up */
+    #tutorial-popup[data-tutorial-step="2"] #tutorial-demo {
+        margin-top: -10px !important;
+        height: 320px !important;
+    }
+}
+
+/* iPhone-specific positioning for back-to-home button to sit just above logo */
+
+/* iPhone 15 Pro Max, 14 Pro Max, 13 Pro Max, 12 Pro Max */
+@media (width: 430px) and (height: 932px) {
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        top: 2.5em !important;
+    }
+}
+
+/* iPhone 15 Plus, 14 Plus */
+@media (width: 428px) and (height: 926px) {
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        top: 2.5em !important;
+    }
+}
+
+/* iPhone 15 Pro, 14 Pro, 13 Pro, 12 Pro, 11 Pro */
+@media (width: 390px) and (height: 844px) {
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        top: 2.5em !important;
+    }
+}
+
+/* iPhone 15, 14, 13, 12 */
+@media (width: 390px) and (height: 844px) {
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        top: 2.5em !important;
+    }
+}
+
+/* iPhone 11 Pro Max */
+@media (width: 414px) and (height: 896px) {
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        top: 2.5em !important;
+    }
+}
+
+/* iPhone 11 */
+@media (width: 414px) and (height: 896px) {
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        top: 2.5em !important;
+    }
+}
+
+/* iPhone XS Max, XR */
+@media (width: 414px) and (height: 896px) {
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        top: 2.5em !important;
+    }
+}
+
+/* iPhone XS, X */
+@media (width: 375px) and (height: 812px) {
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        top: 2.5em !important;
+    }
+}
+
+/* iPhone 8 Plus */
+@media (width: 414px) and (height: 736px) {
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        top: 2.5em !important;
+    }
+}
+
+/* iPhone 8, 7, 6s, 6, iPhone SE (3rd gen) */
+@media (width: 375px) and (height: 667px) {
+    .game-page header > div[style*="position: fixed"][style*="left: 210px"] {
+        top: 3.5em !important;
+    }
+}
+
+
+/* Large Desktop Styles (1440px - 1919px) - HD monitors */
+@media (min-width: 1440px) and (max-width: 1919px) {
+    :root {
+        --cell-size: max(65px, min(9vh, calc((100vw - 450px) / 8)));
+    }
+    
+    body:not(.landing-page) {
+        overflow: hidden;
+        height: 100vh;
+        padding: 10px;
+    }
+    
+    header {
+        padding: 0.3em 0;
+        padding-top: calc(env(safe-area-inset-top) + 0.3em);
+        margin-bottom: 6px;
+    }
+    
+    h1 {
+        font-size: clamp(2.0rem, 3.2vw, 2.2rem);
+        margin-bottom: 6px;
+    }
+    
+    .game-container {
+        gap: 16px;
+        margin-top: 0;
+        max-width: 100%;
+        justify-content: center;
+        height: calc(100vh - 100px);
+        align-items: stretch;
+    }
+    
+    .game-controls-area {
+        width: 280px;
+        min-width: 280px;
+        max-width: 280px;
+        height: calc(var(--board-size) + 4px) !important;
+        min-height: calc(var(--board-size) + 4px) !important;
+        max-height: calc(var(--board-size) + 4px) !important;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    /* Perfect top alignment with game board */
+.game-controls-area {
+    margin-top: -2px !important;  /* Move up 1mm to align with board top */
+}
+    #pregame-controls, #ingame-controls {
+        height: auto;
+        min-height: 120px;
+        max-height: 140px;
+        padding: 12px;
+        flex-shrink: 0;
+    }
+    
+    #game-log-container {
+        position: relative;
+        flex: 1;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0 12px;
+    }
+    
+    .game-log {
+        width: 100%;
+        flex: 1;
+        min-height: 220px;
+        /* max-height: 100%; */
+        margin: 0;
+        overflow-y: auto;
+        height: 437px !important;       /* Changed from 380px (+15%) */
+        min-height: 437px !important;   /* Changed from 380px (+15%) */
+        max-height: 437px !important;   /* Changed from 380px (+15%) */
+    }
+    
+    .player-info,
+    .player-info.bottom {
+        height: 38px;
+        min-height: 38px;
+        max-height: 38px;
+    }
+    
+    .review-controls {
+        flex-wrap: nowrap;
+        /* gap: 3px; */
+        padding: 4px;
+    }
+    
+    .review-controls .btn {
+        margin: 0 -8px;
+        width: 26px;
+        height: 26px;
+        min-width: 26px;
+        font-size: 14px;
+    }
+    
+    .move-counter {
+        height: 30px;
+        min-width: 65px;
+        font-size: 0.8rem;
+        padding: 0 5px;
+    }
+    
+    #review-section {
+        width: 100%;
+        max-width: 260px;
+        margin: 0 auto;
+        padding: 6px;
+        flex-shrink: 0;
+    }
+    
+    .utility-buttons-container {
+        padding: 14px 14px 14px 1px;
+        min-height: 65px;
+        max-height: 75px;
+        /* margin-left: -100px; */
+    }
+    
+    .utility-buttons {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        flex-shrink: 0;
+        justify-content: space-between;
+    }
+    
+    .utility-buttons .btn {
+        flex: 0;
+        min-width: 86px;
+        font-size: 0.85rem;
+        padding: 10px 20px;
+        margin: 0;
+        /* white-space: nowrap; */
+    }
+        /* Shift start button to the right for 1536x864 */
+        .player-buttons .btn.action-btn:last-child {
+            transform: translateX(2px) !important;
+        }
+    /* Tutorial modal scrolling for 1536x864 */
+.tutorial-popup {
+    max-height: 80vh !important;
+    height: auto !important;
+}
+
+#tutorial-popup #tutorial-content {
+    max-height: calc(80vh - 100px) !important;
+    overflow-y: auto !important;
+}
+}
+
+/* Extra Large Desktop Styles (1920px+) - Full HD and larger monitors */
+@media (min-width: 1920px) {
+    :root {
+        --cell-size: max(70px, min(10vh, calc((100vw - 500px) / 8)));
+    }
+    
+    body:not(.landing-page) {
+        overflow: hidden;
+        height: 100vh;
+        padding: 12px;
+    }
+    
+    header {
+        padding: 0.35em 0;
+        padding-top: calc(env(safe-area-inset-top) + 0.35em);
+        margin-bottom: 8px;
+    }
+    
+    h1 {
+        font-size: clamp(2.1rem, 3.5vw, 2.35rem);
+        margin-bottom: 8px;
+    }
+    
+    .game-container {
+        gap: 20px;
+        margin-top: 0;
+        max-width: 1600px;
+        justify-content: center;
+        margin-left: auto;
+        margin-right: auto;
+        height: calc(100vh - 110px);
+        align-items: stretch;
+    }
+    .game-controls-area {
+        width: 300px;
+        min-width: 300px;
+        max-width: 300px;
+        height: calc(var(--board-size) + 6px) !important;
+        min-height: calc(var(--board-size) + 6px) !important;
+        max-height: calc(var(--board-size) + 6px) !important;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    /* Perfect top alignment with game board */
+.game-controls-area {
+    margin-top: -2px !important;
+}
+@media (min-width: 1920px) {
+    .player-buttons .btn.action-btn:last-child {
+      transform: translateX(21px) !important;
+    }
+        /* Keep gap small between start and reset buttons */
+        .player-buttons {
+            gap: 0 !important;
+        }
+        .player-buttons .btn.action-btn:last-child {
+            margin-left: -10px !important;  /* Pull Start button even closer */
+        }
+  }
+    #pregame-controls, #ingame-controls {
+        height: auto;
+        min-height: 130px;
+        max-height: 150px;
+        padding: 14px;
+        flex-shrink: 0;
+    }
+    
+    #game-log-container {
+        position: relative;
+        flex: 1;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0 14px;
+    }
+    
+    .game-log {
+        width: 100%;
+        flex: 1;
+        min-height: 240px;
+        max-height: 100%;
+        margin: 0;
+        overflow-y: auto;
+    }
+    
+    .player-info,
+    .player-info.bottom {
+        height: 40px;
+        min-height: 40px;
+        max-height: 40px;
+    }
+    
+    .review-controls {
+        flex-wrap: nowrap;
+        padding: 5px;
+    }
+    
+    .review-controls .btn {
+        margin: 0 -8px;
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        font-size: 14px;
+    }
+    
+    .move-counter {
+        height: 32px;
+        min-width: 70px;
+        font-size: 0.82rem;
+        padding: 0 6px;
+    }
+    
+    #review-section {
+        width: 100%;
+        max-width: 280px;
+        margin: 0 auto;
+        padding: 7px;
+        flex-shrink: 0;
+    }
+    
+    .utility-buttons-container {
+        padding: 16px 16px 16px 1px;
+        min-height: 70px;
+        max-height: 80px;
+    }
+    
+    .utility-buttons {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        flex-shrink: 0;
+        gap: 12px;
+        justify-content: space-between;
+    }
+    
+    .utility-buttons .btn {
+        flex: 1;
+        min-width: 85px;
+        font-size: 0.88rem;
+        padding: 11px 18px;
+        margin: 0;
+        white-space: nowrap;
+    }
+}
+
+/* Universal desktop rules (all screens 1000px+) */
+@media (min-width: 1000px) {
+    /* Hide mobile action bars on desktop */
+    #mobile-action-bar,
+    #mobile-utility-bar,
+    #mobile-review-bar {
+        display: none !important;
+    }
+    
+    .mobile-only {
+        display: none !important;
+    }
+    
+    .mobile-controls-button {
+        display: none !important;
+    }
+    
+    /* Ensure desktop controls are visible */
+    .game-controls-area {
+        display: flex !important;
+    }
+    
+    /* Flexbox adjustments for proper layout */
+    .game-controls-area {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    #game-log-container {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    .controls {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+}
+
+/* Specific positioning for 1528×728 and 1528×738 dimensions */
+@media (min-width: 1520px) and (max-width: 1536px) and (min-height: 720px) and (max-height: 750px) {
+    /* Increase tutorial modal height and move animation up */
+    #tutorial-popup #tutorial-content {
+        max-height: calc(75vh - 100px) !important;
+        overflow-y: hidden !important;
+        /* padding: 4px 4px 20px 8px !important; */
+    }
+
+    #tutorial-title {
+        margin-bottom: 2px !important;
+        font-size: 1.2rem !important;
+        line-height: 1.1 !important;
+    }
+
+    #tutorial-message {
+        margin-bottom: 2px !important;
+        font-size: 0.8rem !important;
+        line-height: 1.2 !important;
+    }
+
+    #tutorial-demo {
+        height: 385px !important;
+        margin-top: -20px !important;
+        margin-bottom: 0px !important;
+    }
+
+    .tutorial-navigation {
+        padding: 6px !important;
+    }
+
+    /* Specific adjustments for "Building a Yugo" page - shift animation up more */
+    #tutorial-popup[data-tutorial-step="2"] #tutorial-demo {
+        margin-top: -30px !important;
+        height: 580px !important;
+    }
+}
