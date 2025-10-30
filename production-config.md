@@ -2,7 +2,7 @@
 
 ## Server Setup
 - **Frontend**: http://195.35.2.209:3001
-- **Backend**: http://195.35.2.209:3002
+- **Backend**: https://mig-backend-2hpo.onrender.com
 
 ## Deployment Steps
 
@@ -21,7 +21,7 @@ start-production.bat
 ```
 This will:
 - Serve the built React app on port 3001
-- Use the production backend on port 3002
+- Use the production backend on Render
 
 ### 3. Manual Commands
 ```bash
@@ -36,8 +36,8 @@ serve -s build -l 3001
 ```
 
 ## Environment Variables
-- `REACT_APP_API_URL=http://195.35.2.209:3002`
-- `REACT_APP_SOCKET_URL=http://195.35.2.209:3002`
+- `REACT_APP_API_URL=https://mig-backend-2hpo.onrender.com`
+- `REACT_APP_SOCKET_URL=https://mig-backend-2hpo.onrender.com`
 - `NODE_ENV=production`
 
 ## Port Configuration

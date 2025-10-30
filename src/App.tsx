@@ -1761,9 +1761,9 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
       
       // Determine socket URL based on environment variables
       const socketUrl =
-  process.env.REACT_APP_SOCKET_URL ||
+  (process.env.REACT_APP_SOCKET_URL || '').trim() ||
   (process.env.NODE_ENV === 'production'
-    ? 'https://mig-backend-42z5.onrender.com'
+    ? 'https://mig-backend-2hpo.onrender.com'
     : 'http://localhost:3002');
       
       console.log('Connecting to socket:', socketUrl, 'NODE_ENV:', process.env.NODE_ENV);

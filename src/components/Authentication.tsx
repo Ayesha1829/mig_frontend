@@ -36,7 +36,7 @@ const getPasswordStrengthMessage = (password: string): string => {
 const getApiUrl = () => {
   return process.env.REACT_APP_API_URL || 
     (process.env.NODE_ENV === 'production' 
-      ? 'http://195.35.2.209:3002'
+      ? 'https://mig-backend-2hpo.onrender.com'
       : 'http://localhost:3002');
 };
 

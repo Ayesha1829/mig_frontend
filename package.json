@@ -23,7 +23,7 @@
     "start": "set PORT=3001 && react-scripts start",
     "start:dev": "set PORT=3001 && react-scripts start",
     "build": "react-scripts build",
-    "build:production": "set REACT_APP_API_URL=http://195.35.2.209:3002 && set REACT_APP_SOCKET_URL=http://195.35.2.209:3002 && react-scripts build",
+    "build:production": "set REACT_APP_API_URL=https://mig-backend-2hpo.onrender.com && set REACT_APP_SOCKET_URL=https://mig-backend-2hpo.onrender.com && react-scripts build",
     "serve:production": "set PORT=3001 && serve -s build",
     "deploy": "deploy-production.bat",
     "serve": "start-production.bat",
