@@ -1763,7 +1763,7 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
       const socketUrl =
   process.env.REACT_APP_SOCKET_URL ||
   (process.env.NODE_ENV === 'production'
-    ? 'https://bruce.nexivio.online'
+    ? 'https://mig-backend-42z5.onrender.com'
     : 'http://localhost:3002');
       
       console.log('Connecting to socket:', socketUrl, 'NODE_ENV:', process.env.NODE_ENV);
