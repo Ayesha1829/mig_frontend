@@ -993,11 +993,22 @@ const App: React.FC = () => {
       
       return winner === 'white' ? whiteName : blackName;
     } else if (gameMode.startsWith('ai-')) {
-      // For AI games, show logged-in user vs AI
-      if (winner === 'white') {
-        return authState.user?.username || 'White';
+      // For AI games, check playerColor to determine which side is the user
+      if (!playerColor) {
+        // Fallback if playerColor not set (shouldn't happen)
+        return winner === 'white' ? (authState.user?.username || 'White') : 'AI';
+      }
+      
+      if (playerColor === 'white') {
+        // User is white, AI is black
+        return winner === 'white' 
+          ? (authState.user?.username || 'White')
+          : (gameState.players.black || 'AI');
       } else {
-        return 'AI';
+        // User is black, AI is white
+        return winner === 'black'
+          ? (authState.user?.username || 'Black')
+          : (gameState.players.white || 'AI');
       }
     } else {
       // For local games, show logged-in user vs Human
@@ -1101,6 +1112,7 @@ const App: React.FC = () => {
   const playerColorRef = useRef<'white' | 'black' | null>(null); // Ref to avoid closure issues
   const [opponentName, setOpponentName] = useState<string>('');
   const opponentNameRef = useRef<string>(''); // Ref to avoid closure issues
+  const lastServerTimerUpdateRef = useRef<number>(Date.now()); // Track when we last received server timer update
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(true);
   const [minutesPerPlayer, setMinutesPerPlayer] = useState(10);
@@ -1787,6 +1799,13 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
       newSocket.on('connect', () => {
         console.log('Socket connected successfully:', newSocket.id);
         console.log('Production environment:', process.env.NODE_ENV === 'production');
+        
+        // If we're in an online game, request timer sync immediately on connect
+        // This ensures we get accurate server timer state after reconnection
+        if (gameId && gameMode === 'online' && isGameStarted) {
+          console.log('Requesting timer sync on socket connect');
+          newSocket.emit('requestTimerSync', { gameId });
+        }
       });
 
       newSocket.on('connect_error', (error) => {
@@ -1833,6 +1852,7 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
           
           // Initialize timers from server data
           if (data.timerSettings.timerEnabled && data.timers) {
+            lastServerTimerUpdateRef.current = Date.now();
             setTimers(data.timers);
             setActiveTimer(data.gameState.currentPlayer);
           }
@@ -1853,7 +1873,8 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
       });
 
       newSocket.on('timerUpdate', (data) => {
-        // Validate timer sync - check if we missed any updates
+        // For online games, server is the single source of truth
+        // Replace any local/cached timer value with server value
         if (data.timestamp) {
           const timeDiff = Date.now() - data.timestamp;
           // If more than 3 seconds difference, request sync
@@ -1864,13 +1885,36 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
           }
         }
         
+        // Record that we received a server update
+        lastServerTimerUpdateRef.current = Date.now();
+        
+        // Server value ALWAYS takes precedence - replace any cached value
         setTimers(data.timers);
         setActiveTimer(data.activeTimer);
       });
 
       newSocket.on('timerSync', (data) => {
+        // Record that we received a server sync
+        lastServerTimerUpdateRef.current = Date.now();
+        
+        // Server value ALWAYS replaces any cached/local timer value
+        // This is critical for accurate timer after reconnection
         setTimers(data.timers);
         setActiveTimer(data.activeTimer);
+        
+        console.log('Timer sync received from server:', data.timers);
+      });
+
+      newSocket.on('moveError', (data) => {
+        console.error('Move error received:', data);
+        showToast(data.message || 'Illegal move attempted');
+        
+        // If this was our move that failed, we need to handle it
+        // For human players, just show the error (move already prevented)
+        // For AI in online games (future), we might need to retry
+        
+        // Note: This primarily helps with debugging and user feedback
+        // The move should already be prevented on client side before sending
       });
 
       newSocket.on('moveUpdate', (moveData) => {
@@ -1938,6 +1982,7 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
               newSocket.emit('requestTimerSync', { gameId });
             }
           }
+          lastServerTimerUpdateRef.current = Date.now();
           setTimers(moveData.timers);
         }
 
@@ -2046,7 +2091,11 @@ newSocket.on('gameReconnected', (data) => {
     ...data.gameState,
     gameStatus: 'active'
   }));
-  setTimers(data.timers);
+  
+  // CRITICAL: Replace any cached timer value with server value immediately
+  // Server has calculated elapsed time during disconnect - trust it completely
+  lastServerTimerUpdateRef.current = Date.now();
+  setTimers(data.timers); // Server value always takes precedence
   setActiveTimer(data.gameState.currentPlayer);
   setOpponentDisconnected(false);
   setIsGameStarted(true);
@@ -2055,6 +2104,13 @@ newSocket.on('gameReconnected', (data) => {
   setGameMode('online');
   setShowMatchmaking(false);
   setIsSearchingMatch(false);
+  
+  // IMMEDIATELY request timer sync to get most current server state
+  // This ensures accuracy even if gameReconnected data is slightly stale
+  if (newSocket && data.gameId) {
+    console.log('Requesting timer sync after game reconnection');
+    newSocket.emit('requestTimerSync', { gameId: data.gameId });
+  }
   
   console.log('Game reconnection complete');
 });
@@ -2262,12 +2318,20 @@ newSocket.on('rematchAccepted', (data) => {
     }
   }, [gameMode, authState.isGuest, authState.user]);
 
-  // Timer logic - local countdown for ALL games, server sync for online games
+  // Timer logic - server-authoritative for online games, local countdown for local games
+  // For online games: NO local countdown - only display server timer values
+  // For local games: normal local countdown
 useEffect(() => {
+  // For online games, don't run any local timer - rely 100% on server updates
+  if (gameMode === 'online') {
+    return;
+  }
+  
   if (!timerEnabled || !isGameStarted || gameState.gameStatus !== 'active' || !activeTimer) {
     return;
   }
 
+  // Only for local games: run local countdown
   const interval = setInterval(() => {
     setTimers(prev => {
       const newTimers = { ...prev };
@@ -2278,11 +2342,8 @@ useEffect(() => {
         const winner = activeTimer === 'white' ? 'black' : 'white';
         setGameState(prev => ({ ...prev, gameStatus: 'finished' }));
         
-        // For online games, server will handle timeout - just update display
-        if (gameMode !== 'online') {
-          const winnerName = getWinnerName(winner, gameMode, authState, gameState, opponentName);
-          showGameOverNotification('Time Out', `${winnerName} wins on time!`);
-        }
+        const winnerName = getWinnerName(winner, gameMode, authState, gameState, opponentName);
+        showGameOverNotification('Time Out', `${winnerName} wins on time!`);
         setActiveTimer(null);
       }
       
@@ -2355,10 +2416,12 @@ useEffect(() => {
     }
   }, [isGameStarted, gameState.currentPlayer, gameState.gameStatus, timerEnabled]);
 
-  // Request timer sync when reconnecting to online game
+  // Request timer sync when reconnecting to online game or when socket connects
   useEffect(() => {
     if (socket && gameId && gameMode === 'online' && isGameStarted) {
-      // Request current timer state when reconnecting
+      // Request current timer state - this ensures we get accurate server timer
+      // after any disconnection or page reload
+      console.log('Requesting timer sync for online game');
       socket.emit('requestTimerSync', { gameId });
     }
   }, [socket, gameId, gameMode, isGameStarted]);
@@ -2571,9 +2634,9 @@ useEffect(() => {
         message = `${winnerName} wins by yugo count!`;
       }
       
-        // Record game result for authenticated users (ONLY FOR HUMAN VS HUMAN GAMES)
-        if (authState.isAuthenticated && gameMode === 'online') {
-          console.log('🎮 Recording game result (Human vs Human):', { 
+        // Record game result for authenticated users (for AI games AND human vs human games)
+        if (authState.isAuthenticated && (gameMode === 'online' || gameMode.startsWith('ai-'))) {
+          console.log('🎮 Recording game result:', { 
             gameMode, 
             winner, 
             players: gameState.players,
@@ -2581,26 +2644,37 @@ useEffect(() => {
             userId: authState.user?.id 
           });
           
-          // Determine opponent name - for online games, it's the other player's username
-          const opponentName = gameState.players.white === authState.user?.username 
-            ? gameState.players.black 
-            : gameState.players.white;
-          
-          const playerColor = (gameState.players.white === authState.user?.username) ? 'white' : 'black';
-          
           import('./services/authService').then(({ AuthService }) => {
-            if (winner === 'white' && gameState.players.white === authState.user?.username) {
-              console.log('📊 Recording WIN for white player (human vs human)');
-              AuthService.recordGameResult('win', opponentName, playerColor, gameMode);
-            } else if (winner === 'black' && gameState.players.black === authState.user?.username) {
-              console.log('📊 Recording WIN for black player (human vs human)');
-              AuthService.recordGameResult('win', opponentName, playerColor, gameMode);
-            } else if (winner === 'draw') {
-              console.log('📊 Recording DRAW (human vs human)');
-              AuthService.recordGameResult('draw', opponentName, playerColor, gameMode);
+            let opponentName: string;
+            let playerColorValue: 'white' | 'black';
+            
+            if (gameMode === 'online') {
+              // For online games, determine opponent name - it's the other player's username
+              opponentName = gameState.players.white === authState.user?.username 
+                ? gameState.players.black 
+                : gameState.players.white;
+              playerColorValue = (gameState.players.white === authState.user?.username) ? 'white' : 'black';
             } else {
-              console.log('📊 Recording LOSS for human player (human vs human)');
-              AuthService.recordGameResult('loss', opponentName, playerColor, gameMode);
+              // For AI games, opponent is the AI name, and we already know playerColor from state
+              playerColorValue = playerColor || (gameState.players.white === authState.user?.username ? 'white' : 'black');
+              opponentName = playerColorValue === 'white' 
+                ? gameState.players.black 
+                : gameState.players.white;
+            }
+            
+            // Determine result based on winner
+            if (winner === 'white' && gameState.players.white === authState.user?.username) {
+              console.log('📊 Recording WIN for white player');
+              AuthService.recordGameResult('win', opponentName, playerColorValue, gameMode);
+            } else if (winner === 'black' && gameState.players.black === authState.user?.username) {
+              console.log('📊 Recording WIN for black player');
+              AuthService.recordGameResult('win', opponentName, playerColorValue, gameMode);
+            } else if (winner === 'draw') {
+              console.log('📊 Recording DRAW');
+              AuthService.recordGameResult('draw', opponentName, playerColorValue, gameMode);
+            } else {
+              console.log('📊 Recording LOSS');
+              AuthService.recordGameResult('loss', opponentName, playerColorValue, gameMode);
             }
           }).catch((error) => {
             console.error('❌ Error recording game result:', error);
@@ -2609,7 +2683,7 @@ useEffect(() => {
           console.log('🚫 Not recording game result:', { 
             isAuthenticated: authState.isAuthenticated, 
             gameMode, 
-            reason: !authState.isAuthenticated ? 'not authenticated' : gameMode !== 'online' ? 'not human vs human (AI or local game)' : 'unknown' 
+            reason: !authState.isAuthenticated ? 'not authenticated' : gameMode === 'local' ? 'local game (not tracked)' : 'unknown' 
           });
         }
       
@@ -2625,6 +2699,16 @@ useEffect(() => {
     } else {
       // Switch to next player
       const nextPlayer = currentPlayer === 'white' ? 'black' : 'white';
+      
+      // ADD INCREMENT TO THE PLAYER WHO JUST MOVED (before switching)
+      if (timerEnabled && incrementSeconds > 0) {
+        setTimers(prev => {
+          const newTimers = { ...prev };
+          newTimers[currentPlayer] += incrementSeconds;
+          return newTimers;
+        });
+      }
+      
       setGameState(prev => ({
         ...prev,
         board: newBoard,
@@ -2634,8 +2718,9 @@ useEffect(() => {
         gameStatus: 'active',
         igoLine: null
       }));
+      // Note: activeTimer will be updated automatically by useEffect at line 2363
     }
-  }, [gameState.board, gameState.currentPlayer, setMoveHistory, setGameState, setNotification, setActiveTimer, addFadeOutAnimation, addNewDotAnimation, playSound, showToast]);
+  }, [gameState.board, gameState.currentPlayer, setMoveHistory, setGameState, setNotification, setActiveTimer, addFadeOutAnimation, addNewDotAnimation, playSound, showToast, timerEnabled, incrementSeconds]);
 
   // AI move logic with human-like thinking time
   useEffect(() => {
@@ -2675,20 +2760,25 @@ useEffect(() => {
       const thinkTime = Math.floor(Math.random() * (maxThinkTime - minThinkTime + 1)) + minThinkTime;
       console.log(`${currentEngine.toUpperCase()} thinking for ${thinkTime}ms...`);
       const timeout = setTimeout(() => {
+        // Determine AI color - it's the current player when it's AI's turn
+        const aiColor = gameState.currentPlayer;
+        // Human color is the opposite of AI color when AI is playing
+        const humanColor: 'white' | 'black' = (gameState.currentPlayer === 'white' ? 'black' : 'white');
+        
         let aiMove;
         if (currentEngine === 'ai-4') {
           // Count total pieces on the board
           const totalPieces = gameState.board.flat().filter(cell => cell !== null).length;
           // Use depth 3 for first 8 moves, then depth 2
           const maxDepth = totalPieces < 8 ? 3 : 2;
-          aiMove = iterativeDeepeningMinimax(gameState.board, 3000, 'black', globalTransTable, maxDepth);
+          aiMove = iterativeDeepeningMinimax(gameState.board, 3000, aiColor, globalTransTable, maxDepth);
         } else {
           // AI-1, AI-2, AI-3 logic
           const validMoves: { row: number; col: number; score: number }[] = [];
           for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
-              if (isValidMove(gameState.board, row, col, 'black')) {
-                const score = evaluateMove(gameState.board, row, col, 'black', currentEngine as 'ai-1' | 'ai-2' | 'ai-3');
+              if (isValidMove(gameState.board, row, col, aiColor)) {
+                const score = evaluateMove(gameState.board, row, col, aiColor, currentEngine as 'ai-1' | 'ai-2' | 'ai-3');
                 validMoves.push({ row, col, score });
               }
             }
@@ -2724,22 +2814,41 @@ useEffect(() => {
         }
         if (aiMove) {
           // Safety check: ensure the AI move is still valid before executing
-          if (!isValidMove(gameState.board, aiMove.row, aiMove.col, 'black')) {
+          if (!isValidMove(gameState.board, aiMove.row, aiMove.col, aiColor)) {
             console.error(`${currentEngine.toUpperCase()} selected invalid move:`, aiMove);
             // Fallback: pick the first valid move
-            const fallbackMoves = getAllValidMoves(gameState.board, 'black');
+            const fallbackMoves = getAllValidMoves(gameState.board, aiColor);
             if (fallbackMoves.length > 0) {
               aiMove = fallbackMoves[0];
               console.log(`${currentEngine.toUpperCase()} fallback move:`, aiMove);
             } else {
               console.error(`${currentEngine.toUpperCase()} has no valid moves!`);
-              aiMove = null;
+              // End game if AI has no moves
+              setGameState(prev => ({ ...prev, gameStatus: 'finished' }));
+              const winner: 'white' | 'black' = humanColor;
+              const winnerName = getWinnerName(winner, gameMode, authState, gameState, opponentName);
+              showGameOverNotification('Game Over', `${winnerName} wins - AI has no legal moves!`);
+              setActiveTimer(null);
+              return;
             }
           }
           
-          if (aiMove) {
-            console.log(`${currentEngine.toUpperCase()} selected move:`, aiMove);
-            makeLocalMove(aiMove.row, aiMove.col);
+          console.log(`${currentEngine.toUpperCase()} selected move:`, aiMove);
+          makeLocalMove(aiMove.row, aiMove.col);
+        } else {
+          // Handle case where AI couldn't find a move at all
+          console.error(`${currentEngine.toUpperCase()} could not find any move!`);
+          const fallbackMoves = getAllValidMoves(gameState.board, aiColor);
+          if (fallbackMoves.length > 0) {
+            console.log(`${currentEngine.toUpperCase()} using emergency fallback`);
+            makeLocalMove(fallbackMoves[0].row, fallbackMoves[0].col);
+          } else {
+            // No valid moves - end game
+            setGameState(prev => ({ ...prev, gameStatus: 'finished' }));
+            const winner: 'white' | 'black' = humanColor;
+            const winnerName = getWinnerName(winner, gameMode, authState, gameState, opponentName);
+            showGameOverNotification('Game Over', `${winnerName} wins - AI has no legal moves!`);
+            setActiveTimer(null);
           }
         }
       }, thinkTime);
@@ -2858,7 +2967,7 @@ useEffect(() => {
       const standardSettings = {
         timerEnabled: true,
         minutesPerPlayer: 10,
-        incrementSeconds: 0
+        incrementSeconds: incrementSeconds // Use actual state value
       };
       console.log('Using standard timer settings for online game:', standardSettings);
       socket.emit('findMatch', standardSettings);
@@ -3107,7 +3216,14 @@ useEffect(() => {
     console.log('startRoomGame called', { socket: !!socket, currentRoom, isHost: currentRoom?.isHost });
     if (socket && currentRoom && currentRoom.isHost) {
       console.log('Emitting startRoomGame for room:', currentRoom.code);
-      socket.emit('startRoomGame', { roomCode: currentRoom.code });
+      socket.emit('startRoomGame', { 
+        roomCode: currentRoom.code,
+        timerSettings: {
+          timerEnabled: timerEnabled,
+          minutesPerPlayer: minutesPerPlayer,
+          incrementSeconds: incrementSeconds
+        }
+      });
     } else {
       console.log('Cannot start room game - missing requirements');
     }
@@ -3574,6 +3690,12 @@ useEffect(() => {
     }
     setPlayerColor(chosenColor);
 
+    // Get human player name - use username if authenticated, otherwise 'human'
+    const humanPlayerName = authState.isAuthenticated && authState.user?.username 
+      ? authState.user.username 
+      : 'human';
+    const aiPlayerName = `CORE ${gameMode.toUpperCase()}`;
+
     // Initialize the game state - White always goes first
     const newBoard = copyBoard(INITIAL_BOARD);
     setGameState({
@@ -3583,8 +3705,8 @@ useEffect(() => {
       gameStatus: 'active',
       lastMove: null,
       players: {
-        white: chosenColor === 'white' ? 'human' : `CORE ${gameMode.toUpperCase()}`,
-        black: chosenColor === 'black' ? 'human' : `CORE ${gameMode.toUpperCase()}`
+        white: chosenColor === 'white' ? humanPlayerName : aiPlayerName,
+        black: chosenColor === 'black' ? humanPlayerName : aiPlayerName
       },
       igoLine: null
     });
@@ -3961,9 +4083,13 @@ useEffect(() => {
         (authState.user?.username || 'Guest') : 
         opponentName;
       return whiteName;
-    } else if ((gameMode === 'ai-1' || gameMode === 'ai-2' || gameMode === 'ai-3') && authState.isAuthenticated) {
-      // AI game with authenticated user - show username for white (human player)
-      return authState.user?.username;
+    } else if ((gameMode === 'ai-1' || gameMode === 'ai-2' || gameMode === 'ai-3' || gameMode === 'ai-4') && authState.isAuthenticated) {
+      // AI game with authenticated user - check playerColor to see which side is the user
+      if (playerColor === 'white') {
+        return authState.user?.username;
+      } else {
+        return gameState.players.white; // AI is white
+      }
     } else {
       // Local human vs human or unauthenticated - use gameState players
       return gameState.players.white;
@@ -4035,9 +4161,13 @@ useEffect(() => {
         (authState.user?.username || 'Guest') : 
         opponentName;
       return blackName;
-    } else if ((gameMode === 'ai-1' || gameMode === 'ai-2' || gameMode === 'ai-3') && authState.isAuthenticated) {
-      // AI game - black is always the AI, show AI name without color label
-      return gameState.players.black;
+    } else if ((gameMode === 'ai-1' || gameMode === 'ai-2' || gameMode === 'ai-3' || gameMode === 'ai-4') && authState.isAuthenticated) {
+      // AI game - check playerColor to see which side is the user
+      if (playerColor === 'black') {
+        return authState.user?.username;
+      } else {
+        return gameState.players.black; // AI is black
+      }
     } else {
       // Local human vs human or unauthenticated - use gameState players
       return gameState.players.black;
@@ -4170,12 +4300,12 @@ useEffect(() => {
                           value={minutesPerPlayer}
                           onChange={(e) => setMinutesPerPlayer(parseInt(e.target.value))}
                         >
-                          <option value="60">60</option>
-                          <option value="30">30</option>
                           <option value="15">15</option>
                           <option value="10">10</option>
                           <option value="5">5</option>
                           <option value="3">3</option>
+                          <option value="2">2</option>
+                          <option value="1">1</option>
                         </select>
                       </div>
                       <div className="option-cell">
@@ -4186,9 +4316,9 @@ useEffect(() => {
                           value={incrementSeconds}
                           onChange={(e) => setIncrementSeconds(parseInt(e.target.value))}
                         >
-                          <option value="10">10 sec</option>
                           <option value="5">5 sec</option>
                           <option value="2">2 sec</option>
+                          <option value="1">1 sec</option>
                           <option value="0">0 sec</option>
                         </select>
                       </div>
@@ -5117,12 +5247,12 @@ useEffect(() => {
                         backgroundColor: '#fff'
                       }}
                     >
-                      <option value="60">60</option>
-                      <option value="30">30</option>
                       <option value="15">15</option>
                       <option value="10">10</option>
                       <option value="5">5</option>
                       <option value="3">3</option>
+                      <option value="2">2</option>
+                      <option value="1">1</option>
                     </select>
                   </div>
                   <div className="option-cell" style={{ flex: 1, marginLeft: '10px' }}>
@@ -5141,9 +5271,9 @@ useEffect(() => {
                         backgroundColor: '#fff'
                       }}
                     >
-                      <option value="10">10 sec</option>
                       <option value="5">5 sec</option>
                       <option value="2">2 sec</option>
+                      <option value="1">1 sec</option>
                       <option value="0">0 sec</option>
                     </select>
                   </div>
