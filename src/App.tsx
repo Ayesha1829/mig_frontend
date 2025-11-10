@@ -975,48 +975,41 @@ const evaluateMove = (board: (Cell | null)[][], row: number, col: number, player
 
 const App: React.FC = () => {
   // Helper function to get winner name for personalized messages
-  const getWinnerName = (winner: 'white' | 'black' | 'draw', gameMode: string, authState: any, gameState: any, opponentName?: string) => {
+  const getWinnerName = useCallback((
+    winner: 'white' | 'black' | 'draw',
+    gameMode: string,
+    authStateValue: any,
+    gameStateValue: any
+  ) => {
     if (winner === 'draw') return 'Draw';
     
     if (gameMode === 'online') {
-      // For online games, determine names based on player color and opponent
-      const currentUsername = authState.user?.username || 'Player';
-      
-      // Use opponentNameRef.current instead of the opponentName parameter
-      const opponentName = opponentNameRef.current || 'Opponent';
-      
-      // Determine which player is which based on the current user's color
-      const whiteName = playerColorRef.current === 'white' ? currentUsername : opponentName;
-      const blackName = playerColorRef.current === 'black' ? currentUsername : opponentName;
-      
+      const currentUsername = authStateValue.user?.username || 'Player';
+      const opponentFromRef = opponentNameRef.current || 'Opponent';
+      const whiteName = playerColorRef.current === 'white' ? currentUsername : opponentFromRef;
+      const blackName = playerColorRef.current === 'black' ? currentUsername : opponentFromRef;
       return winner === 'white' ? whiteName : blackName;
     } else if (gameMode.startsWith('ai-')) {
-      // For AI games, check playerColor to determine which side is the user
-      if (!playerColor) {
-        // Fallback if playerColor not set (shouldn't happen)
-        return winner === 'white' ? (authState.user?.username || 'White') : 'AI';
+      const playerColorValue = playerColorRef.current;
+      if (!playerColorValue) {
+        return winner === 'white' ? (authStateValue.user?.username || 'White') : 'AI';
       }
       
-      if (playerColor === 'white') {
-        // User is white, AI is black
+      if (playerColorValue === 'white') {
         return winner === 'white' 
-          ? (authState.user?.username || 'White')
-          : (gameState.players.black || 'AI');
+          ? (authStateValue.user?.username || 'White')
+          : (gameStateValue.players.black || 'AI');
       } else {
-        // User is black, AI is white
         return winner === 'black'
-          ? (authState.user?.username || 'Black')
-          : (gameState.players.white || 'AI');
+          ? (authStateValue.user?.username || 'Black')
+          : (gameStateValue.players.white || 'AI');
       }
     } else {
-      // For local games, show logged-in user vs Human
-      if (winner === 'white') {
-        return authState.user?.username || 'White';
-      } else {
-        return 'Human';
-      }
+      return winner === 'white'
+        ? (authStateValue.user?.username || 'White')
+        : 'Human';
     }
-  };
+  }, []);
 
   // Game state
   const [gameState, setGameState] = useState<GameState>({
@@ -1806,8 +1799,8 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
 
   const getCurrentWinnerName = useCallback(
     (winner: 'white' | 'black' | 'draw', mode: string = gameMode) =>
-      getWinnerName(winner, mode, authStateRef.current, gameStateRef.current, opponentNameRef.current),
-    [gameMode]
+      getWinnerName(winner, mode, authStateRef.current, gameStateRef.current),
+    [gameMode, getWinnerName]
   );
 
   // Initialize socket connection for online play
