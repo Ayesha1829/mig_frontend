@@ -1797,6 +1797,16 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
     setTimeout(() => setToast(''), duration);
   }, []);
 
+  const showGameOverNotification = useCallback((title: string, message: string, delay: number = 1000) => {
+    setTimeout(() => {
+      setNotification({
+        title,
+        message,
+        show: true
+      });
+    }, delay);
+  }, []);
+
   const getCurrentWinnerName = useCallback(
     (winner: 'white' | 'black' | 'draw', mode: string = gameMode) =>
       getWinnerName(winner, mode, authStateRef.current, gameStateRef.current),
@@ -2400,17 +2410,7 @@ newSocket.on('rematchAccepted', (data) => {
         newSocket.close();
       };
     }
-  }, [gameMode, addFadeOutAnimation, addNewDotAnimation, getCurrentWinnerName, playSound, recordGameEnd, shouldProcessServerTimer, showToast]);
-
-  const showGameOverNotification = useCallback((title: string, message: string, delay: number = 1000) => {
-    setTimeout(() => {
-      setNotification({
-        title,
-        message,
-        show: true
-      });
-    }, delay);
-  }, []);
+  }, [gameMode, addFadeOutAnimation, addNewDotAnimation, getCurrentWinnerName, playSound, recordGameEnd, shouldProcessServerTimer, showGameOverNotification, showToast]);
 
   // Timer logic - server-authoritative for online games, local countdown for local games
   // For online games: NO local countdown - only display server timer values
