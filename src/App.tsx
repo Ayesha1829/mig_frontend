@@ -1128,6 +1128,7 @@ const App: React.FC = () => {
   const [showMobileControls, setShowMobileControls] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [gameResultRecorded, setGameResultRecorded] = useState(false);
+  const gameResultRecordedRef = useRef(false);
 
   useEffect(() => {
     gameIdRef.current = gameId;
@@ -1149,6 +1150,10 @@ const App: React.FC = () => {
     gameModeRef.current = gameMode;
   }, [gameMode]);
 
+  useEffect(() => {
+    gameResultRecordedRef.current = gameResultRecorded;
+  }, [gameResultRecorded]);
+
   const shouldProcessServerTimer = useCallback((payloadGameId?: string | null) => {
     const activeGameId = gameIdRef.current;
 
@@ -1166,7 +1171,7 @@ const App: React.FC = () => {
   // Centralized function to record game results
   // Around line 1091-1131 - Replace the entire recordGameEnd function
 
-const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: string) => {
+  const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: string) => {
   const currentPlayerColor = playerColorRef.current;
   const currentAuthState = authStateRef.current;
   console.log('🎯 recordGameEnd called:', {
@@ -1175,13 +1180,13 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
     currentPlayerColor,
     isAuthenticated: currentAuthState.isAuthenticated,
     hasUser: !!currentAuthState.user,
-    gameResultRecorded
+    gameResultRecorded: gameResultRecordedRef.current
   });
   if (!currentPlayerColor) {
     console.log('🚫 No playerColor available, cannot record game result');
     return;
   }
-  if (currentAuthState.isAuthenticated && currentAuthState.user && !gameResultRecorded) {
+  if (currentAuthState.isAuthenticated && currentAuthState.user && !gameResultRecordedRef.current) {
     const opponentName = opponentNameRef.current;
     
     console.log('✅ Recording for:', {
@@ -1199,6 +1204,7 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
       AuthService.recordGameResult(resultType, opponentName, currentPlayerColor, 'online').then(result => {
         console.log(`✅ ${resultType} recorded successfully:`, result);
         setGameResultRecorded(true);
+        gameResultRecordedRef.current = true;
       }).catch(err => {
         console.error(`❌ Failed to record ${resultType}:`, err);
       });
@@ -1209,10 +1215,10 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
     console.log('🚫 Not recording:', {
       isAuthenticated: currentAuthState.isAuthenticated,
       hasUser: !!currentAuthState.user,
-      gameResultRecorded
+      gameResultRecorded: gameResultRecordedRef.current
     });
   }
-}, [gameResultRecorded]);
+}, []);
 
   // Room-based multiplayer state
   const [currentRoom, setCurrentRoom] = useState<{
@@ -2285,6 +2291,7 @@ newSocket.on('rematchAccepted', (data) => {
   
   // Reset game result recording flag for new game
   setGameResultRecorded(false);
+  gameResultRecordedRef.current = false;
   
         setIsGameStarted(true);
         isGameStartedRef.current = true;
@@ -3411,6 +3418,7 @@ useEffect(() => {
     setCurrentReviewMove(0);
     // Reset game result recording flag for new game
     setGameResultRecorded(false);
+    gameResultRecordedRef.current = false;
     setOriginalGameState(null);
     setIsProcessingMove(false);
     setRematchState({
