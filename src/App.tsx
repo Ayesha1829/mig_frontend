@@ -1835,11 +1835,12 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
       
       console.log('Connecting to socket:', socketUrl, 'NODE_ENV:', process.env.NODE_ENV);
       
+      const isGuest = !currentAuthState.isAuthenticated || currentAuthState.isGuest;
       const newSocket = io(socketUrl, {
         auth: {
-          token: token,
-          isGuest: currentAuthState.isGuest,
-          user: currentAuthState.user
+          token,
+          isGuest,
+          user: isGuest ? null : currentAuthState.user
         },
         // Production-optimized connection settings
         timeout: process.env.NODE_ENV === 'production' ? 10000 : 5000,
