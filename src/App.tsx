@@ -2286,6 +2286,11 @@ newSocket.on('rematchAccepted', (data) => {
   // Reset game result recording flag for new game
   setGameResultRecorded(false);
   
+        setIsGameStarted(true);
+        isGameStartedRef.current = true;
+        setShowMatchmaking(false);
+        setIsSearchingMatch(false);
+
   // Reset timers from server data
   if (data.timers) {
     setTimers(data.timers);
@@ -2310,6 +2315,23 @@ newSocket.on('rematchAccepted', (data) => {
           show: false
         });
         showToast('Opponent declined the rematch');
+      });
+
+      newSocket.on('rematchRequestFailed', (data) => {
+        console.log('Rematch request failed', data);
+        setRematchState({
+          requested: false,
+          fromPlayer: null,
+          requestedBy: '',
+          waitingForResponse: false
+        });
+        const reason = data?.reason ?? '';
+        const message =
+          data?.message ??
+          (reason === 'opponent_offline'
+            ? 'Your opponent has left the match. Rematch is unavailable.'
+            : 'Unable to start a rematch right now.');
+        showToast(message);
       });
 
       // Draw offer events
@@ -3107,6 +3129,11 @@ useEffect(() => {
 
     if (!socket || !gameId || gameState.gameStatus !== 'finished') {
       console.log('Cannot request rematch - missing requirements');
+      return;
+    }
+
+    if (rematchState.waitingForResponse) {
+      showToast('Already waiting for your opponent to respond.');
       return;
     }
 
