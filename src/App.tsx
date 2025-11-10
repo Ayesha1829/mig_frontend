@@ -1108,6 +1108,7 @@ const App: React.FC = () => {
   // Online game state
   const [socket, setSocket] = useState<any>(null);
   const [gameId, setGameId] = useState<string | null>(null);
+  const gameIdRef = useRef<string | null>(null);
   const [playerColor, setPlayerColor] = useState<'white' | 'black' | null>(null);
   const playerColorRef = useRef<'white' | 'black' | null>(null); // Ref to avoid closure issues
   const [opponentName, setOpponentName] = useState<string>('');
@@ -1118,6 +1119,7 @@ const App: React.FC = () => {
   const [minutesPerPlayer, setMinutesPerPlayer] = useState(10);
   const [incrementSeconds, setIncrementSeconds] = useState(0);
   const [isGameStarted, setIsGameStarted] = useState(false);
+  const isGameStartedRef = useRef(false);
   const [rematchState, setRematchState] = useState<{
     requested: boolean;
     fromPlayer: string | null;
@@ -1133,6 +1135,14 @@ const App: React.FC = () => {
   const [showMobileControls, setShowMobileControls] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [gameResultRecorded, setGameResultRecorded] = useState(false);
+
+  useEffect(() => {
+    gameIdRef.current = gameId;
+  }, [gameId]);
+
+  useEffect(() => {
+    isGameStartedRef.current = isGameStarted;
+  }, [isGameStarted]);
 
   // Centralized function to record game results
   // Around line 1091-1131 - Replace the entire recordGameEnd function
@@ -1827,6 +1837,7 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
 
       newSocket.on('gameStart', (data) => {
         setGameId(data.gameId);
+        gameIdRef.current = data.gameId;
         setPlayerColor(data.playerColor);
         setOpponentName(data.opponentName);
         opponentNameRef.current = data.opponentName; // Update ref for closure access
@@ -1859,6 +1870,7 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
         }
         
         setIsGameStarted(true);
+        isGameStartedRef.current = true;
         setShowMatchmaking(false);
         setIsSearchingMatch(false);
         
@@ -1873,6 +1885,15 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
       });
 
       newSocket.on('timerUpdate', (data) => {
+        if (!shouldProcessServerTimer(data?.gameId ?? null)) {
+          console.log('Ignoring timerUpdate for inactive or mismatched game', {
+            payloadGameId: data?.gameId ?? null,
+            activeGameId: gameIdRef.current,
+            isGameStarted: isGameStartedRef.current
+          });
+          return;
+        }
+
         // For online games, server is the single source of truth
         // Replace any local/cached timer value with server value
         if (data.timestamp) {
@@ -1894,6 +1915,15 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
       });
 
       newSocket.on('timerSync', (data) => {
+        if (!shouldProcessServerTimer(data?.gameId ?? null)) {
+          console.log('Ignoring timerSync for inactive or mismatched game', {
+            payloadGameId: data?.gameId ?? null,
+            activeGameId: gameIdRef.current,
+            isGameStarted: isGameStartedRef.current
+          });
+          return;
+        }
+
         // Record that we received a server sync
         lastServerTimerUpdateRef.current = Date.now();
         
@@ -1918,6 +1948,15 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
       });
 
       newSocket.on('moveUpdate', (moveData) => {
+        if (gameMode === 'online' && !shouldProcessServerTimer(moveData?.gameId ?? null)) {
+          console.log('Ignoring moveUpdate for inactive or mismatched game', {
+            payloadGameId: moveData?.gameId ?? null,
+            activeGameId: gameIdRef.current,
+            isGameStarted: isGameStartedRef.current
+          });
+          return;
+        }
+
         // Play appropriate sound effects
         if (moveData.gameOver && moveData.igo) {
           playSound('igo'); // Igo formed
@@ -2083,6 +2122,7 @@ newSocket.on('gameReconnected', (data) => {
   
   // Set up the game state similar to gameStart
   setGameId(data.gameId);
+  gameIdRef.current = data.gameId;
   setPlayerColor(data.playerColor);
   setOpponentName(data.opponentName);
   opponentNameRef.current = data.opponentName; // Update ref for closure access
@@ -2099,6 +2139,7 @@ newSocket.on('gameReconnected', (data) => {
   setActiveTimer(data.gameState.currentPlayer);
   setOpponentDisconnected(false);
   setIsGameStarted(true);
+  isGameStartedRef.current = true;
   
   // Set game mode and hide menus
   setGameMode('online');
@@ -2182,6 +2223,7 @@ newSocket.on('rematchAccepted', (data) => {
   
   // Set up new game identifiers
   setGameId(data.gameId);
+  gameIdRef.current = data.gameId;
   setPlayerColor(data.playerColor);
   setOpponentName(data.opponentName);
   opponentNameRef.current = data.opponentName;
@@ -2931,6 +2973,7 @@ useEffect(() => {
         igoLine: null
       });
       setIsGameStarted(true);
+      isGameStartedRef.current = true;
       setMoveHistory([]);
       
       if (timerEnabled) {
@@ -3082,6 +3125,7 @@ useEffect(() => {
         show: true
       });
       setIsGameStarted(false);
+      isGameStartedRef.current = false;
       setActiveTimer(null);
     }
   };
@@ -3136,6 +3180,7 @@ useEffect(() => {
         // Local game - end game as draw
         setGameState(prev => ({ ...prev, gameStatus: 'finished' }));
         setIsGameStarted(false);
+        isGameStartedRef.current = false;
         // Add 1 second delay for players to see the final position
         setTimeout(() => {
           setNotification({
@@ -3229,7 +3274,58 @@ useEffect(() => {
     }
   };
 
+  const emitResetGameToServer = async (activeGameId: string | null) => {
+    if (!socket || !activeGameId) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      let completed = false;
+      const timeout = setTimeout(() => {
+        if (!completed) {
+          console.warn('resetGame acknowledgement timed out');
+          completed = true;
+          resolve();
+        }
+      }, 1500);
+
+      try {
+        socket.emit('resetGame', { gameId: activeGameId }, () => {
+          if (!completed) {
+            completed = true;
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+      } catch (error) {
+        console.error('Failed to emit resetGame event', error);
+        if (!completed) {
+          completed = true;
+          clearTimeout(timeout);
+          resolve();
+        }
+      }
+    });
+  };
+
+  const shouldProcessServerTimer = (payloadGameId?: string | null) => {
+    const activeGameId = gameIdRef.current;
+
+    if (!isGameStartedRef.current || !activeGameId) {
+      return false;
+    }
+
+    if (payloadGameId && payloadGameId !== activeGameId) {
+      return false;
+    }
+
+    return true;
+  };
+
   const resetGame = async () => {
+    const activeGameId = gameIdRef.current;
+    await emitResetGameToServer(activeGameId);
+
     // Clear inGame flag when resetting game
     const currentUser = AuthService.getCurrentUser();
     if (currentUser) {
@@ -3246,12 +3342,15 @@ useEffect(() => {
       igoLine: null
     });
     setIsGameStarted(false);
+    isGameStartedRef.current = false;
     setMoveHistory([]);
     setActiveTimer(null);
     setPlayerColor(null);
+    playerColorRef.current = null;
     setOpponentName('');
     opponentNameRef.current = ''; // Clear ref too
-    setGameId('');
+    setGameId(null);
+    gameIdRef.current = null;
     // Exit review mode if currently in review
     setIsReviewMode(false);
     setCurrentReviewMove(0);
@@ -3711,6 +3810,7 @@ useEffect(() => {
       igoLine: null
     });
     setIsGameStarted(true);
+    isGameStartedRef.current = true;
     setMoveHistory([]);
 
     if (timerEnabled) {
