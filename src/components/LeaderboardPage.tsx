@@ -20,17 +20,6 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ onBack }) => {
     mastersPlaying: 0
   });
 
-  useEffect(() => {
-    loadLeaderboard();
-    loadCurrentUser();
-
-    document.body.classList.add('leaderboard-page-open');
-
-    return () => {
-      document.body.classList.remove('leaderboard-page-open');
-    };
-  }, [loadLeaderboard, loadCurrentUser]);
-
   const loadMigoyugoStats = useCallback(async (leaderboardData: UserStats[]) => {
     try {
       const { FirestoreService } = await import('../services/firestoreService');
@@ -88,6 +77,17 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ onBack }) => {
       console.error('Error loading current user:', err);
     }
   }, []);
+
+  useEffect(() => {
+    loadLeaderboard();
+    loadCurrentUser();
+
+    document.body.classList.add('leaderboard-page-open');
+
+    return () => {
+      document.body.classList.remove('leaderboard-page-open');
+    };
+  }, [loadLeaderboard, loadCurrentUser]);
 
   const getRankIcon = (index: number) => {
     switch (index) {
