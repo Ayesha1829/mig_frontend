@@ -20,7 +20,6 @@ import {
   handleLogin, 
   handleSignup, 
   handlePlayAsGuest, 
-  handleViewStats,
   getApiUrl 
 } from './components/Authentication';
 import {
