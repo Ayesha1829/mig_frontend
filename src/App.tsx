@@ -17,9 +17,8 @@ import { FirestoreService } from './services/firestoreService';
 //import { collection, addDoc, getFirestore } from 'firebase/firestore';
 //import { getAuth } from "firebase/auth"
 import { 
-  handleLogin, 
-  handleSignup, 
   handlePlayAsGuest, 
+  handleViewStats,
   getApiUrl 
 } from './components/Authentication';
 import {
@@ -1029,6 +1028,7 @@ const App: React.FC = () => {
     players: { white: 'Player 1', black: 'Player 2' },
     igoLine: null
   });
+  const gameStateRef = useRef<GameState>(gameState);
 
   // Page navigation state
   const [currentPage, setCurrentPage] = useState<'landing' | 'game' | 'battle-report' | 'leaderboard' | 'about'>('landing');
@@ -1046,7 +1046,6 @@ const App: React.FC = () => {
   const [showStatsAuth, setShowStatsAuth] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [showBattleReportModal, setShowBattleReportModal] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
   const [isSearchingMatch, setIsSearchingMatch] = useState(false);
   const [userStats, setUserStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -1084,6 +1083,7 @@ const App: React.FC = () => {
 
   // Game mode state
   const [gameMode, setGameMode] = useState<'local' | 'ai-1' | 'ai-2' | 'ai-3' | 'ai-4' | 'online'>('local');
+  const gameModeRef = useRef<'local' | 'ai-1' | 'ai-2' | 'ai-3' | 'ai-4' | 'online'>(gameMode);
  // const [waitingForAI, setWaitingForAI] = useState(false);
 
   // Notification state
@@ -1103,6 +1103,7 @@ const App: React.FC = () => {
     user: null,
     isGuest: false
   });
+  const authStateRef = useRef<AuthState>(authState);
 
   // Online game state
   const [socket, setSocket] = useState<any>(null);
@@ -1143,36 +1144,60 @@ const App: React.FC = () => {
     isGameStartedRef.current = isGameStarted;
   }, [isGameStarted]);
 
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
+  useEffect(() => {
+    authStateRef.current = authState;
+  }, [authState]);
+
+  useEffect(() => {
+    gameModeRef.current = gameMode;
+  }, [gameMode]);
+
+  const shouldProcessServerTimer = useCallback((payloadGameId?: string | null) => {
+    const activeGameId = gameIdRef.current;
+
+    if (!isGameStartedRef.current || !activeGameId) {
+      return false;
+    }
+
+    if (payloadGameId && payloadGameId !== activeGameId) {
+      return false;
+    }
+
+    return true;
+  }, []);
+
   // Centralized function to record game results
   // Around line 1091-1131 - Replace the entire recordGameEnd function
 
 const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: string) => {
   const currentPlayerColor = playerColorRef.current;
+  const currentAuthState = authStateRef.current;
   console.log('🎯 recordGameEnd called:', {
     winner,
     reason,
     currentPlayerColor,
-    isAuthenticated: authState.isAuthenticated,
-    hasUser: !!authState.user,
+    isAuthenticated: currentAuthState.isAuthenticated,
+    hasUser: !!currentAuthState.user,
     gameResultRecorded
   });
-  // Defensive check for playerColor
   if (!currentPlayerColor) {
     console.log('🚫 No playerColor available, cannot record game result');
     return;
   }
-  if (authState.isAuthenticated && authState.user && !gameResultRecorded) {
-    // Use currentPlayerColor from ref to determine opponent
+  if (currentAuthState.isAuthenticated && currentAuthState.user && !gameResultRecorded) {
     const opponentName = opponentNameRef.current;
     
     console.log('✅ Recording for:', {
-      username: authState.user?.username,
+      username: currentAuthState.user?.username,
       myColor: currentPlayerColor,
       opponent: opponentName,
       winner
     });
     import('./services/authService').then(({ AuthService }) => {
-      // Determine result based on currentPlayerColor and winner
       const resultType = winner === 'draw' ? 'draw' : 
                         winner === currentPlayerColor ? 'win' : 'loss';
       
@@ -1189,13 +1214,12 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
     });
   } else {
     console.log('🚫 Not recording:', {
-      isAuthenticated: authState.isAuthenticated,
-      hasUser: !!authState.user,
+      isAuthenticated: currentAuthState.isAuthenticated,
+      hasUser: !!currentAuthState.user,
       gameResultRecorded
     });
   }
-}, [authState.isAuthenticated, authState.user, gameState.players, gameResultRecorded]);
-// IMPORTANT: playerColor is NOT in dependencies - we use playerColorRef instead
+}, [gameResultRecorded]);
 
   // Room-based multiplayer state
   const [currentRoom, setCurrentRoom] = useState<{
@@ -1205,6 +1229,17 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
     guestName?: string;
     status: 'waiting' | 'ready' | 'active';
   } | null>(null);
+  const currentRoomRef = useRef<{
+    code: string;
+    isHost: boolean;
+    hostName: string;
+    guestName?: string;
+    status: 'waiting' | 'ready' | 'active';
+  } | null>(null);
+
+  useEffect(() => {
+    currentRoomRef.current = currentRoom;
+  }, [currentRoom]);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [roomCodeInput, setRoomCodeInput] = useState('');
 
@@ -1703,9 +1738,10 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
           });
         } else {
           // User signed out - set online status to false if we have user data
-          if (authState.isAuthenticated && authState.user) {
+          const currentAuthState = authStateRef.current;
+          if (currentAuthState.isAuthenticated && currentAuthState.user) {
             import('./services/firestoreService').then(({ FirestoreService }) => {
-              FirestoreService.updateUserOnlineStatus(authState.user!.id, false).catch(console.error);
+              FirestoreService.updateUserOnlineStatus(currentAuthState.user!.id, false).catch(console.error);
               console.log('📴 User online status set to false on signout');
             });
           }
@@ -1768,16 +1804,23 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
     setTimeout(() => setToast(''), duration);
   }, []);
 
+  const getCurrentWinnerName = useCallback(
+    (winner: 'white' | 'black' | 'draw', mode: string = gameMode) =>
+      getWinnerName(winner, mode, authStateRef.current, gameStateRef.current, opponentNameRef.current),
+    [gameMode]
+  );
+
   // Initialize socket connection for online play
   useEffect(() => {
     console.log('Socket effect triggered with gameMode:', gameMode);
     if (gameMode === 'online') {
       const token = localStorage.getItem('authToken');
+      const currentAuthState = authStateRef.current;
       console.log('Creating socket connection...', {
         production: process.env.NODE_ENV === 'production',
         connectionURL: process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3002',
         hasToken: !!token,
-        authState
+        authState: currentAuthState
       });
       
       // Determine socket URL based on environment variables
@@ -1792,8 +1835,8 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
       const newSocket = io(socketUrl, {
         auth: {
           token: token,
-          isGuest: authState.isGuest,
-          user: authState.user
+          isGuest: currentAuthState.isGuest,
+          user: currentAuthState.user
         },
         // Production-optimized connection settings
         timeout: process.env.NODE_ENV === 'production' ? 10000 : 5000,
@@ -1809,11 +1852,12 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
         console.log('Socket connected successfully:', newSocket.id);
         console.log('Production environment:', process.env.NODE_ENV === 'production');
         
+        const activeGameId = gameIdRef.current;
         // If we're in an online game, request timer sync immediately on connect
         // This ensures we get accurate server timer state after reconnection
-        if (gameId && gameMode === 'online' && isGameStarted) {
+        if (activeGameId && isGameStartedRef.current) {
           console.log('Requesting timer sync on socket connect');
-          newSocket.emit('requestTimerSync', { gameId });
+          newSocket.emit('requestTimerSync', { gameId: activeGameId });
         }
       });
 
@@ -1900,7 +1944,9 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
           // If more than 3 seconds difference, request sync
           if (timeDiff > 3000) {
             console.log('Timer sync issue detected, requesting sync...');
-            newSocket.emit('requestTimerSync', { gameId });
+            if (gameIdRef.current) {
+              newSocket.emit('requestTimerSync', { gameId: gameIdRef.current });
+            }
             return;
           }
         }
@@ -2017,7 +2063,9 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
             const timeDiff = Date.now() - moveData.timestamp;
             if (timeDiff > 3000) {
               console.log('Move timer sync issue detected, requesting sync...');
-              newSocket.emit('requestTimerSync', { gameId });
+              if (gameIdRef.current) {
+                newSocket.emit('requestTimerSync', { gameId: gameIdRef.current });
+              }
             }
           }
           lastServerTimerUpdateRef.current = Date.now();
@@ -2034,10 +2082,10 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
               message = 'Game ended in a draw!';
             }
           } else if (moveData.igo) {
-            const winnerName = getWinnerName(moveData.winner, 'online', authState, gameState, opponentName);
+            const winnerName = getCurrentWinnerName(moveData.winner, 'online');
             message = `${winnerName} wins with an Igo!`;
           } else {
-            const winnerName = getWinnerName(moveData.winner, 'online', authState, gameState, opponentName);
+            const winnerName = getCurrentWinnerName(moveData.winner, 'online');
             message = `${winnerName} wins by yugo count!`;
           }
           
@@ -2049,10 +2097,11 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
           
           // Record game result for authenticated users
           const currentPlayerColor = playerColorRef.current;
+          const currentAuthState = authStateRef.current;
           console.log('🔍 Checking auth state for recording:', { 
-            isAuthenticated: authState.isAuthenticated,
-            hasUser: !!authState.user,
-            userId: authState.user?.id,
+            isAuthenticated: currentAuthState.isAuthenticated,
+            hasUser: !!currentAuthState.user,
+            userId: currentAuthState.user?.id,
             winner: moveData.winner,
             playerColor: currentPlayerColor
           });
@@ -2088,13 +2137,13 @@ const recordGameEnd = useCallback((winner: 'white' | 'black' | 'draw', reason: s
           if (data.reason === 'draw') {
             message = 'The game has ended in a draw by mutual agreement.';
           } else if (data.reason === 'resignation') {
-            const winnerName = getWinnerName(data.winner, 'online', authState, gameState, opponentName);
+            const winnerName = getCurrentWinnerName(data.winner, 'online');
             message = `${winnerName} wins by resignation!`;
           } else if (data.reason === 'timeout') {
-            const winnerName = getWinnerName(data.winner, 'online', authState, gameState, opponentName);
+            const winnerName = getCurrentWinnerName(data.winner, 'online');
             message = `${winnerName} wins on time!`;
           } else {
-            const winnerName = getWinnerName(data.winner, 'online', authState, gameState, opponentName);
+            const winnerName = getCurrentWinnerName(data.winner, 'online');
             message = `${winnerName} wins!`;
           }
           
@@ -2334,7 +2383,8 @@ newSocket.on('rematchAccepted', (data) => {
       });
 
       newSocket.on('guestLeft', (data) => {
-        if (currentRoom && currentRoom.code === data.roomCode) {
+        const activeRoom = currentRoomRef.current;
+        if (activeRoom && activeRoom.code === data.roomCode) {
           setCurrentRoom(prev => prev ? {
             ...prev,
             guestName: undefined,
@@ -2357,33 +2407,42 @@ newSocket.on('rematchAccepted', (data) => {
         newSocket.close();
       };
     }
-  }, [gameMode, authState.isGuest, authState.user]);
+  }, [gameMode, addFadeOutAnimation, addNewDotAnimation, getCurrentWinnerName, playSound, recordGameEnd, shouldProcessServerTimer, showToast]);
+
+  const showGameOverNotification = useCallback((title: string, message: string, delay: number = 1000) => {
+    setTimeout(() => {
+      setNotification({
+        title,
+        message,
+        show: true
+      });
+    }, delay);
+  }, []);
 
   // Timer logic - server-authoritative for online games, local countdown for local games
   // For online games: NO local countdown - only display server timer values
   // For local games: normal local countdown
 useEffect(() => {
-  // For online games, don't run any local timer - rely 100% on server updates
   if (gameMode === 'online') {
     return;
   }
-  
-  if (!timerEnabled || !isGameStarted || gameState.gameStatus !== 'active' || !activeTimer) {
+
+  const currentGameStatus = gameState.gameStatus;
+
+  if (!timerEnabled || !isGameStarted || currentGameStatus !== 'active' || !activeTimer) {
     return;
   }
 
-  // Only for local games: run local countdown
   const interval = setInterval(() => {
     setTimers(prev => {
       const newTimers = { ...prev };
       newTimers[activeTimer] -= 1;
       
       if (newTimers[activeTimer] <= 0) {
-        // Time out
         const winner = activeTimer === 'white' ? 'black' : 'white';
         setGameState(prev => ({ ...prev, gameStatus: 'finished' }));
         
-        const winnerName = getWinnerName(winner, gameMode, authState, gameState, opponentName);
+        const winnerName = getCurrentWinnerName(winner);
         showGameOverNotification('Time Out', `${winnerName} wins on time!`);
         setActiveTimer(null);
       }
@@ -2393,7 +2452,7 @@ useEffect(() => {
   }, 1000);
 
   return () => clearInterval(interval);
-}, [timerEnabled, isGameStarted, gameState.gameStatus, activeTimer, gameMode]);
+}, [timerEnabled, isGameStarted, gameState.gameStatus, activeTimer, gameMode, getCurrentWinnerName, showGameOverNotification]);
 
 
 
@@ -2437,19 +2496,6 @@ useEffect(() => {
     }
   };
 
-  // Helper function to show game over notification with delay
-  const showGameOverNotification = (title: string, message: string, delay: number = 1000) => {
-    setTimeout(() => {
-      setNotification({
-        title,
-        message,
-        show: true
-      });
-    }, delay);
-  };
-
-
-
   // Start timer when game starts or player changes
   useEffect(() => {
     if (isGameStarted && gameState.gameStatus === 'active' && timerEnabled) {
@@ -2468,14 +2514,6 @@ useEffect(() => {
   }, [socket, gameId, gameMode, isGameStarted]);
 
   // Authentication handlers
-  const handleLoginWrapper = async (email: string, password: string) => {
-    await handleLogin(email, password, setAuthError, setAuthState, setShowLogin, showToast);
-  };
-
-  const handleSignupWrapper = async (email: string, username: string, password: string) => {
-    await handleSignup(email, username, password, setAuthError, setAuthState, setShowSignup, showToast);
-  };
-
   const handlePlayAsGuestWrapper = () => {
     handlePlayAsGuest(setAuthState, setShowMatchmaking);
   };
@@ -2552,8 +2590,7 @@ useEffect(() => {
   }, []);
 
   // Handle stats button click
-   // Handle stats button click
-   const handleViewStatsWrapper = async () => {
+  const handleViewStatsWrapper = async () => {
     if (!authState.isAuthenticated || !authState.user) {
       setShowSettings(false);
       showToast('Please sign in to view your statistics');
@@ -2562,8 +2599,15 @@ useEffect(() => {
       return;
     }
 
-    // Close settings and open battle report modal instead of navigating
     setShowSettings(false);
+    await handleViewStats(
+      authState,
+      setShowStatsAuth,
+      setStatsLoading,
+      setUserStats,
+      setShowStats,
+      setToast
+    );
     setShowBattleReportModal(true);
   };
   const formatTime = (seconds: number): string => {
@@ -2668,63 +2712,68 @@ useEffect(() => {
           message = 'Game ended in a draw!';
         }
       } else if (igo) {
-        const winnerName = getWinnerName(winner as 'white' | 'black', gameMode, authState, gameState, opponentName);
+        const winnerName = getCurrentWinnerName(winner as 'white' | 'black');
         message = `${winnerName} wins with an Igo!`;
       } else {
-        const winnerName = getWinnerName(winner as 'white' | 'black', gameMode, authState, gameState, opponentName);
+        const winnerName = getCurrentWinnerName(winner as 'white' | 'black');
         message = `${winnerName} wins by yugo count!`;
       }
       
+        const currentAuthState = authStateRef.current;
+        const currentGameStateSnapshot = gameStateRef.current;
+        const currentGameMode = gameModeRef.current;
+
         // Record game result for authenticated users (for AI games AND human vs human games)
-        if (authState.isAuthenticated && (gameMode === 'online' || gameMode.startsWith('ai-'))) {
+        if (currentAuthState.isAuthenticated && (currentGameMode === 'online' || currentGameMode.startsWith('ai-'))) {
           console.log('🎮 Recording game result:', { 
-            gameMode, 
+            gameMode: currentGameMode, 
             winner, 
-            players: gameState.players,
-            isAuthenticated: authState.isAuthenticated,
-            userId: authState.user?.id 
+            players: currentGameStateSnapshot.players,
+            isAuthenticated: currentAuthState.isAuthenticated,
+            userId: currentAuthState.user?.id 
           });
           
           import('./services/authService').then(({ AuthService }) => {
             let opponentName: string;
             let playerColorValue: 'white' | 'black';
             
-            if (gameMode === 'online') {
+            if (currentGameMode === 'online') {
               // For online games, determine opponent name - it's the other player's username
-              opponentName = gameState.players.white === authState.user?.username 
-                ? gameState.players.black 
-                : gameState.players.white;
-              playerColorValue = (gameState.players.white === authState.user?.username) ? 'white' : 'black';
+              opponentName = currentGameStateSnapshot.players.white === currentAuthState.user?.username 
+                ? currentGameStateSnapshot.players.black 
+                : currentGameStateSnapshot.players.white;
+              playerColorValue = (currentGameStateSnapshot.players.white === currentAuthState.user?.username) ? 'white' : 'black';
             } else {
               // For AI games, opponent is the AI name, and we already know playerColor from state
-              playerColorValue = playerColor || (gameState.players.white === authState.user?.username ? 'white' : 'black');
+              const playerColorValueFromRef = playerColorRef.current;
+              playerColorValue = playerColorValueFromRef || (currentGameStateSnapshot.players.white === currentAuthState.user?.username ? 'white' : 'black');
               opponentName = playerColorValue === 'white' 
-                ? gameState.players.black 
-                : gameState.players.white;
+                ? currentGameStateSnapshot.players.black 
+                : currentGameStateSnapshot.players.white;
             }
             
             // Determine result based on winner
-            if (winner === 'white' && gameState.players.white === authState.user?.username) {
+            if (winner === 'white' && currentGameStateSnapshot.players.white === currentAuthState.user?.username) {
               console.log('📊 Recording WIN for white player');
-              AuthService.recordGameResult('win', opponentName, playerColorValue, gameMode);
-            } else if (winner === 'black' && gameState.players.black === authState.user?.username) {
+              AuthService.recordGameResult('win', opponentName, playerColorValue, currentGameMode);
+            } else if (winner === 'black' && currentGameStateSnapshot.players.black === currentAuthState.user?.username) {
               console.log('📊 Recording WIN for black player');
-              AuthService.recordGameResult('win', opponentName, playerColorValue, gameMode);
+              AuthService.recordGameResult('win', opponentName, playerColorValue, currentGameMode);
             } else if (winner === 'draw') {
               console.log('📊 Recording DRAW');
-              AuthService.recordGameResult('draw', opponentName, playerColorValue, gameMode);
+              AuthService.recordGameResult('draw', opponentName, playerColorValue, currentGameMode);
             } else {
               console.log('📊 Recording LOSS');
-              AuthService.recordGameResult('loss', opponentName, playerColorValue, gameMode);
+              AuthService.recordGameResult('loss', opponentName, playerColorValue, currentGameMode);
             }
           }).catch((error) => {
             console.error('❌ Error recording game result:', error);
           });
         } else {
           console.log('🚫 Not recording game result:', { 
-            isAuthenticated: authState.isAuthenticated, 
-            gameMode, 
-            reason: !authState.isAuthenticated ? 'not authenticated' : gameMode === 'local' ? 'local game (not tracked)' : 'unknown' 
+            isAuthenticated: authStateRef.current.isAuthenticated, 
+            gameMode: currentGameMode, 
+            reason: !authStateRef.current.isAuthenticated ? 'not authenticated' : currentGameMode === 'local' ? 'local game (not tracked)' : 'unknown' 
           });
         }
       
@@ -2761,7 +2810,7 @@ useEffect(() => {
       }));
       // Note: activeTimer will be updated automatically by useEffect at line 2363
     }
-  }, [gameState.board, gameState.currentPlayer, setMoveHistory, setGameState, setNotification, setActiveTimer, addFadeOutAnimation, addNewDotAnimation, playSound, showToast, timerEnabled, incrementSeconds]);
+  }, [gameState.board, gameState.currentPlayer, setMoveHistory, setGameState, setNotification, setActiveTimer, addFadeOutAnimation, addNewDotAnimation, playSound, showToast, timerEnabled, incrementSeconds, getCurrentWinnerName]);
 
   // AI move logic with human-like thinking time
   useEffect(() => {
@@ -2867,7 +2916,7 @@ useEffect(() => {
               // End game if AI has no moves
               setGameState(prev => ({ ...prev, gameStatus: 'finished' }));
               const winner: 'white' | 'black' = humanColor;
-              const winnerName = getWinnerName(winner, gameMode, authState, gameState, opponentName);
+              const winnerName = getCurrentWinnerName(winner);
               showGameOverNotification('Game Over', `${winnerName} wins - AI has no legal moves!`);
               setActiveTimer(null);
               return;
@@ -2887,7 +2936,7 @@ useEffect(() => {
             // No valid moves - end game
             setGameState(prev => ({ ...prev, gameStatus: 'finished' }));
             const winner: 'white' | 'black' = humanColor;
-            const winnerName = getWinnerName(winner, gameMode, authState, gameState, opponentName);
+            const winnerName = getCurrentWinnerName(winner);
             showGameOverNotification('Game Over', `${winnerName} wins - AI has no legal moves!`);
             setActiveTimer(null);
           }
@@ -2895,7 +2944,7 @@ useEffect(() => {
       }, thinkTime);
       return () => clearTimeout(timeout);
     }
-  }, [gameState.currentPlayer, gameState.gameStatus, isGameStarted, gameMode, gameState.board, makeLocalMove, playerColor]);
+  }, [gameState.currentPlayer, gameState.gameStatus, isGameStarted, gameMode, gameState.board, makeLocalMove, playerColor, getCurrentWinnerName, showGameOverNotification]);
 
   const handleCellClick = (row: number, col: number) => {
     if (!isGameStarted || gameState.gameStatus !== 'active' || isReviewMode) return;
@@ -3116,7 +3165,7 @@ useEffect(() => {
     } else {
       // Local game - handle resignation locally
       const winner = gameState.currentPlayer === 'white' ? 'black' : 'white';
-      const winnerName = getWinnerName(winner, gameMode, authState, gameState, opponentName);
+      const winnerName = getCurrentWinnerName(winner);
       setGameState(prev => ({ ...prev, gameStatus: 'finished' }));
       setNotification({
         title: 'Game Over',
@@ -3305,20 +3354,6 @@ useEffect(() => {
         }
       }
     });
-  };
-
-  const shouldProcessServerTimer = (payloadGameId?: string | null) => {
-    const activeGameId = gameIdRef.current;
-
-    if (!isGameStartedRef.current || !activeGameId) {
-      return false;
-    }
-
-    if (payloadGameId && payloadGameId !== activeGameId) {
-      return false;
-    }
-
-    return true;
   };
 
   const resetGame = async () => {

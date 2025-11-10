@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AuthService } from '../services/authService';
 import { UserStats } from '../services/firestoreService';
 import './LeaderboardPage.css';
@@ -22,68 +22,31 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ onBack }) => {
 
   useEffect(() => {
     loadLeaderboard();
-    loadMigoyugoStats();
     loadCurrentUser();
-    
-    // Add body class to prevent scrolling
+
     document.body.classList.add('leaderboard-page-open');
-    
-    // Cleanup on unmount
+
     return () => {
       document.body.classList.remove('leaderboard-page-open');
     };
-  }, []);
+  }, [loadLeaderboard, loadCurrentUser]);
 
-  const loadCurrentUser = async () => {
+  const loadMigoyugoStats = useCallback(async (leaderboardData: UserStats[]) => {
     try {
-      const user = AuthService.getCurrentUser();
-      if (user) {
-        setCurrentUserId(user.uid);
-      }
-    } catch (err) {
-      console.error('Error loading current user:', err);
-    }
-  };
-
-  const loadLeaderboard = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const result = await AuthService.getLeaderboard(100);
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setLeaderboard(result.leaderboard);
-      }
-    } catch (err) {
-      setError('Failed to load leaderboard');
-      console.error('Error loading leaderboard:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadMigoyugoStats = async () => {
-    try {
-      // Get all users to calculate stats
       const { FirestoreService } = await import('../services/firestoreService');
       const allUsers = await FirestoreService.getAllUsers();
       
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // Calculate stats
       const totalPlayers = allUsers.length;
       const playingNow = allUsers.filter(user => user.isOnline).length;
       
-      // Calculate games today (simplified - you might want to add a games collection for this)
       const gamesToday = allUsers.reduce((sum, user) => {
-        // This is a simplified calculation - in reality you'd want to track daily games
-        return sum + Math.floor((user['total games played'] || 0) * 0.1); // Simulate daily games
+        return sum + Math.floor((user['total games played'] || 0) * 0.1);
       }, 0);
       
-      // Masters playing (top 10 players who are online)
-      const mastersPlaying = leaderboard.filter(user => user.isOnline).length;
+      const mastersPlaying = leaderboardData.filter(user => user.isOnline).length;
       
       setMigoyugoStats({
         totalPlayers,
@@ -94,7 +57,37 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ onBack }) => {
     } catch (err) {
       console.error('Error loading Migoyugo stats:', err);
     }
-  };
+  }, []);
+
+  const loadLeaderboard = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await AuthService.getLeaderboard(100);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setLeaderboard(result.leaderboard);
+        await loadMigoyugoStats(result.leaderboard);
+      }
+    } catch (err) {
+      setError('Failed to load leaderboard');
+      console.error('Error loading leaderboard:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadMigoyugoStats]);
+
+  const loadCurrentUser = useCallback(async () => {
+    try {
+      const user = AuthService.getCurrentUser();
+      if (user) {
+        setCurrentUserId(user.uid);
+      }
+    } catch (err) {
+      console.error('Error loading current user:', err);
+    }
+  }, []);
 
   const getRankIcon = (index: number) => {
     switch (index) {
