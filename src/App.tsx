@@ -1024,7 +1024,16 @@ const App: React.FC = () => {
   const gameStateRef = useRef<GameState>(gameState);
 
   // Page navigation state
-  const [currentPage, setCurrentPage] = useState<'landing' | 'game' | 'battle-report' | 'leaderboard' | 'about'>('landing');
+const [currentPage, setCurrentPage] = useState<'landing' | 'game' | 'battle-report' | 'leaderboard' | 'about'>(() => {
+  if (typeof window === 'undefined') {
+    return 'landing';
+  }
+  const saved = localStorage.getItem('mig_current_page');
+  if (saved === 'game' || saved === 'battle-report' || saved === 'leaderboard' || saved === 'about') {
+    return saved;
+  }
+  return 'landing';
+});
 
   // UI state
   const [showTutorial, setShowTutorial] = useState(false);
@@ -1285,6 +1294,12 @@ const App: React.FC = () => {
     setCurrentTheme('classic'); // Always force classic theme
     loadSavedSettings();
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mig_current_page', currentPage);
+    }
+  }, [currentPage]);
 
   // Keep playerColorRef in sync with playerColor to avoid closure issues
   useEffect(() => {
