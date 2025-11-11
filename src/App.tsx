@@ -2143,25 +2143,39 @@ const App: React.FC = () => {
         
         // Add 1 second delay for players to see the final move the yugo  system according to the system ytoy weare  working io the project shees ikram 
         setTimeout(() => {
+          let title = 'Game Over';
           let message = '';
+          const playerColor = playerColorRef.current;
+          const winnerName = getCurrentWinnerName(data.winner, 'online');
+          const resetByName = data.resetByName || 'Opponent';
+
           if (data.reason === 'draw') {
+            title = 'Game Drawn';
             message = 'The game has ended in a draw by mutual agreement.';
           } else if (data.reason === 'resignation') {
-            const winnerName = getCurrentWinnerName(data.winner, 'online');
             message = `${winnerName} wins by resignation!`;
           } else if (data.reason === 'timeout') {
-            const winnerName = getCurrentWinnerName(data.winner, 'online');
+            title = 'Time Out';
             message = `${winnerName} wins on time!`;
+          } else if (data.reason === 'reset') {
+            title = 'Game Reset';
+            const resetBy = data.resetBy;
+            if (playerColor && resetBy && playerColor === resetBy) {
+              message = 'You reset the board. Your opponent wins by default.';
+            } else if (playerColor && resetBy && playerColor === data.winner) {
+              message = `${resetByName} reset the board — you win by default!`;
+            } else {
+              message = `${resetByName} reset the board. ${winnerName} wins by default.`;
+            }
           } else {
-            const winnerName = getCurrentWinnerName(data.winner, 'online');
             message = `${winnerName} wins!`;
           }
           
-        setNotification({
-            title: data.reason === 'timeout' ? 'Time Out' : (data.reason === 'draw' ? 'Game Drawn' : 'Game Over'),
+          setNotification({
+            title,
             message,
-          show: true
-        });
+            show: true
+          });
         }, 1000);
       });
 
