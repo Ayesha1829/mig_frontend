@@ -2483,7 +2483,7 @@ newSocket.on('rematchAccepted', (data) => {
         newSocket.close();
       };
     }
-  }, [gameMode, addFadeOutAnimation, addNewDotAnimation, getCurrentWinnerName, playSound, recordGameEnd, shouldProcessServerTimer, showGameOverNotification, showToast]);
+  }, [gameMode, addFadeOutAnimation, addNewDotAnimation, getCurrentWinnerName, playSound, recordGameEnd, shouldProcessServerTimer, showGameOverNotification, showToast, hideNotification]);
 
   // Timer logic - server-authoritative for online games, local countdown for local games
   // For online games: NO local countdown - only display server timer values
