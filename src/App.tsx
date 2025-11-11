@@ -1230,21 +1230,27 @@ const [currentPage, setCurrentPage] = useState<'landing' | 'game' | 'battle-repo
   }
 }, []);
 
+  const pendingResetForfeitureRef = useRef<'self' | 'opponent' | null>(null);
+
   const clearBoardAfterResetWin = useCallback(() => {
-    setGameState(prev => ({
-      ...prev,
-      board: copyBoard(INITIAL_BOARD),
-      currentPlayer: 'white',
-      scores: { white: 0, black: 0 },
-      lastMove: null,
-      igoLine: null
-    }));
-    setMoveHistory([]);
-    setNewlyPlacedDots(new Set());
-    setFadingDots(new Set());
-    setActiveTimer(null);
-    setIsGameStarted(false);
-    isGameStartedRef.current = false;
+    const perspective = pendingResetForfeitureRef.current;
+    if (perspective === 'self') {
+      setGameState(prev => ({
+        ...prev,
+        board: copyBoard(INITIAL_BOARD),
+        currentPlayer: 'white',
+        scores: { white: 0, black: 0 },
+        lastMove: null,
+        igoLine: null
+      }));
+      setMoveHistory([]);
+      setNewlyPlacedDots(new Set());
+      setFadingDots(new Set());
+      setActiveTimer(null);
+      setIsGameStarted(false);
+      isGameStartedRef.current = false;
+    }
+    pendingResetForfeitureRef.current = null;
   }, []);
 
   const hideNotification = useCallback((options?: { resetContent?: boolean; preserveBoard?: boolean }) => {
@@ -2188,7 +2194,15 @@ const [currentPage, setCurrentPage] = useState<'landing' | 'game' | 'battle-repo
           setTimers(data.timers);
         }
         
-        lastGameEndReasonRef.current = data.reason === 'reset' ? 'reset' : null;
+        const isReset = data.reason === 'reset';
+        lastGameEndReasonRef.current = isReset ? 'reset' : null;
+        if (isReset) {
+          const resetBy = data.resetBy;
+          const myColor = playerColorRef.current;
+          pendingResetForfeitureRef.current = myColor && resetBy && myColor === resetBy ? 'self' : 'opponent';
+        } else {
+          pendingResetForfeitureRef.current = null;
+        }
 
         // Add 1 second delay for players to see the final move the yugo  system according to the system ytoy weare  working io the project shees ikram 
         setTimeout(() => {
@@ -2350,7 +2364,9 @@ newSocket.on('rematchAccepted', (data) => {
   opponentNameRef.current = data.opponentName;
   setOpponentDisconnected(false);
   setMoveHistory([]);
-  hideNotification({ resetContent: true, preserveBoard: true });
+  pendingResetForfeitureRef.current = null;
+      pendingResetForfeitureRef.current = null;
+      hideNotification({ resetContent: true, preserveBoard: true });
   lastGameEndReasonRef.current = null;
   
   // Reset game result recording flag for new game
@@ -2380,7 +2396,8 @@ newSocket.on('rematchAccepted', (data) => {
           waitingForResponse: false
         });
         // Close the modal completely and show toast notification
-      hideNotification({ resetContent: true });
+        pendingResetForfeitureRef.current = null;
+        hideNotification({ resetContent: true });
         showToast('Opponent declined the rematch');
       });
 
@@ -3231,6 +3248,7 @@ useEffect(() => {
         requestedBy: '',
         waitingForResponse: false
       });
+    pendingResetForfeitureRef.current = null;
     hideNotification({ resetContent: true, preserveBoard: true });
     }
   };
@@ -3446,8 +3464,12 @@ useEffect(() => {
 
     if (!(gameMode === 'online' && currentStatus && currentStatus !== 'active')) {
       await emitResetGameToServer(activeGameId);
+      if (gameMode === 'online') {
+        pendingResetForfeitureRef.current = 'self';
+      }
     } else {
       console.log('Skipping server reset for finished online game');
+      pendingResetForfeitureRef.current = null;
     }
 
     // Clear inGame flag when resetting game
