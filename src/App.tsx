@@ -1139,8 +1139,6 @@ const [currentPage, setCurrentPage] = useState<'landing' | 'game' | 'battle-repo
   const [gameResultRecorded, setGameResultRecorded] = useState(false);
   const gameResultRecordedRef = useRef(false);
   const lastGameEndReasonRef = useRef<string | null>(null);
-  const pendingResetForfeitureRef = useRef<'self' | 'opponent' | null>(null);
-  const autoRematchPendingRef = useRef(false);
 
   useEffect(() => {
     gameIdRef.current = gameId;
@@ -1232,28 +1230,41 @@ const [currentPage, setCurrentPage] = useState<'landing' | 'game' | 'battle-repo
   }
 }, []);
 
-  const clearBoardAfterResetWin = useCallback(() => {
-    if (pendingResetForfeitureRef.current !== 'self') {
-      pendingResetForfeitureRef.current = null;
-      return;
-    }
+  const pendingResetForfeitureRef = useRef<'self' | 'opponent' | null>(null);
 
-    setGameState(prev => ({
-      ...prev,
-      board: copyBoard(INITIAL_BOARD),
-      currentPlayer: 'white',
-      scores: { white: 0, black: 0 },
-      lastMove: null,
-      igoLine: null
-    }));
-    setMoveHistory([]);
-    setNewlyPlacedDots(new Set());
-    setFadingDots(new Set());
-    setActiveTimer(null);
-    setIsGameStarted(false);
-    isGameStartedRef.current = false;
+  const clearBoardAfterResetWin = useCallback(() => {
+    const perspective = pendingResetForfeitureRef.current;
+    if (perspective === 'self') {
+      setGameState(prev => ({
+        ...prev,
+        board: copyBoard(INITIAL_BOARD),
+        currentPlayer: 'white',
+        scores: { white: 0, black: 0 },
+        lastMove: null,
+        igoLine: null
+      }));
+      setMoveHistory([]);
+      setNewlyPlacedDots(new Set());
+      setFadingDots(new Set());
+      setActiveTimer(null);
+      setIsGameStarted(false);
+      isGameStartedRef.current = false;
+    }
     pendingResetForfeitureRef.current = null;
   }, []);
+
+  const hideNotification = useCallback((options?: { resetContent?: boolean; preserveBoard?: boolean }) => {
+    if (options?.resetContent) {
+      setNotification({ title: '', message: '', show: false });
+    } else {
+      setNotification(prev => ({ ...prev, show: false }));
+    }
+
+    if (!options?.preserveBoard && lastGameEndReasonRef.current === 'reset') {
+      clearBoardAfterResetWin();
+      lastGameEndReasonRef.current = null;
+    }
+  }, [clearBoardAfterResetWin]);
 
   // Room-based multiplayer state
   const [currentRoom, setCurrentRoom] = useState<{
@@ -1844,56 +1855,6 @@ const [currentPage, setCurrentPage] = useState<'landing' | 'game' | 'battle-repo
     setTimeout(() => setToast(''), duration);
   }, []);
 
-  const rematchStateRef = useRef(rematchState);
-  useEffect(() => {
-    rematchStateRef.current = rematchState;
-  }, [rematchState]);
-
-  const requestRematch = useCallback(() => {
-    const activeGameId = gameIdRef.current;
-    const currentStatus = gameStateRef.current?.gameStatus;
-
-    if (!socket || !activeGameId || currentStatus !== 'finished') {
-      console.log('Cannot request rematch - missing requirements');
-      return;
-    }
-
-    if (rematchStateRef.current?.waitingForResponse) {
-      showToast('Already waiting for your opponent to respond.');
-      return;
-    }
-
-    socket.emit('requestRematch', { gameId: activeGameId });
-    console.log('Emitted requestRematch', {
-      gameId: activeGameId,
-      socketId: socket?.id,
-      connected: socket?.connected
-    });
-  }, [socket, showToast]);
-
-  const hideNotification = useCallback((options?: { resetContent?: boolean; preserveBoard?: boolean }) => {
-    if (options?.resetContent) {
-      setNotification({ title: '', message: '', show: false });
-    } else {
-      setNotification(prev => ({ ...prev, show: false }));
-    }
-
-    const shouldAutoChallenge =
-      !options?.preserveBoard &&
-      lastGameEndReasonRef.current === 'reset' &&
-      autoRematchPendingRef.current;
-
-    if (!options?.preserveBoard && lastGameEndReasonRef.current === 'reset') {
-      clearBoardAfterResetWin();
-      lastGameEndReasonRef.current = null;
-    }
-
-    if (shouldAutoChallenge) {
-      autoRematchPendingRef.current = false;
-      setTimeout(() => requestRematch(), 0);
-    }
-  }, [clearBoardAfterResetWin, requestRematch]);
-
   const showGameOverNotification = useCallback((title: string, message: string, delay: number = 1000) => {
     setTimeout(() => {
       setNotification({
@@ -2232,20 +2193,15 @@ const [currentPage, setCurrentPage] = useState<'landing' | 'game' | 'battle-repo
         if (data.timers) {
           setTimers(data.timers);
         }
-
+        
         const isReset = data.reason === 'reset';
         lastGameEndReasonRef.current = isReset ? 'reset' : null;
-
         if (isReset) {
           const resetBy = data.resetBy;
           const myColor = playerColorRef.current;
-          const iAmLoser = resetBy && myColor && resetBy === myColor;
-
-          pendingResetForfeitureRef.current = iAmLoser ? 'self' : 'opponent';
-          autoRematchPendingRef.current = iAmLoser;
+          pendingResetForfeitureRef.current = myColor && resetBy && myColor === resetBy ? 'self' : 'opponent';
         } else {
           pendingResetForfeitureRef.current = null;
-          autoRematchPendingRef.current = false;
         }
 
         // Add 1 second delay for players to see the final move the yugo  system according to the system ytoy weare  working io the project shees ikram 
@@ -3260,6 +3216,34 @@ useEffect(() => {
     setShowRoomModal(true);
   };
 
+  const requestRematch = () => {
+    console.log('Request rematch clicked!', {
+      hasSocket: !!socket,
+      gameId,
+      socketConnected: socket?.connected,
+      gameStatus: gameState.gameStatus,
+      socketId: socket?.id
+    });
+
+    if (!socket || !gameId || gameState.gameStatus !== 'finished') {
+      console.log('Cannot request rematch - missing requirements');
+      return;
+    }
+
+    if (rematchState.waitingForResponse) {
+      showToast('Already waiting for your opponent to respond.');
+      return;
+    }
+
+    console.log('Emitting requestRematch to server...', {
+      gameId,
+      socketId: socket.id,
+      connected: socket.connected
+    });
+
+    socket.emit('requestRematch', { gameId });
+  };
+
   const respondToRematch = (accept: boolean) => {
     if (socket && gameId) {
       socket.emit('respondToRematch', { gameId, accept });
@@ -3496,16 +3480,10 @@ useEffect(() => {
       await emitResetGameToServer(activeGameId);
       if (gameMode === 'online') {
         pendingResetForfeitureRef.current = 'self';
-        autoRematchPendingRef.current = true;
       }
     } else {
       console.log('Skipping server reset for finished online game');
       pendingResetForfeitureRef.current = null;
-      autoRematchPendingRef.current = false;
-    }
-
-    if (gameMode === 'online') {
-      return;
     }
 
     // Clear inGame flag when resetting game
