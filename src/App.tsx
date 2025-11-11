@@ -1129,6 +1129,7 @@ const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [gameResultRecorded, setGameResultRecorded] = useState(false);
   const gameResultRecordedRef = useRef(false);
+  const lastGameEndReasonRef = useRef<string | null>(null);
 
   useEffect(() => {
     gameIdRef.current = gameId;
@@ -1219,6 +1220,36 @@ const App: React.FC = () => {
     });
   }
 }, []);
+
+  const clearBoardAfterResetWin = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      board: copyBoard(INITIAL_BOARD),
+      currentPlayer: 'white',
+      scores: { white: 0, black: 0 },
+      lastMove: null,
+      igoLine: null
+    }));
+    setMoveHistory([]);
+    setNewlyPlacedDots(new Set());
+    setFadingDots(new Set());
+    setActiveTimer(null);
+    setIsGameStarted(false);
+    isGameStartedRef.current = false;
+  }, []);
+
+  const hideNotification = useCallback((options?: { resetContent?: boolean; preserveBoard?: boolean }) => {
+    if (options?.resetContent) {
+      setNotification({ title: '', message: '', show: false });
+    } else {
+      setNotification(prev => ({ ...prev, show: false }));
+    }
+
+    if (!options?.preserveBoard && lastGameEndReasonRef.current === 'reset') {
+      clearBoardAfterResetWin();
+      lastGameEndReasonRef.current = null;
+    }
+  }, [clearBoardAfterResetWin]);
 
   // Room-based multiplayer state
   const [currentRoom, setCurrentRoom] = useState<{
@@ -1900,6 +1931,7 @@ const App: React.FC = () => {
           ...data.gameState,
           gameStatus: 'active'
         }));
+      lastGameEndReasonRef.current = null;
         
         // Update inGame flag with gameId
         const currentUser = AuthService.getCurrentUser();
@@ -2141,6 +2173,8 @@ const App: React.FC = () => {
           setTimers(data.timers);
         }
         
+        lastGameEndReasonRef.current = data.reason === 'reset' ? 'reset' : null;
+
         // Add 1 second delay for players to see the final move the yugo  system according to the system ytoy weare  working io the project shees ikram 
         setTimeout(() => {
           let title = 'Game Over';
@@ -2301,7 +2335,8 @@ newSocket.on('rematchAccepted', (data) => {
   opponentNameRef.current = data.opponentName;
   setOpponentDisconnected(false);
   setMoveHistory([]);
-  setNotification({ title: '', message: '', show: false });
+  hideNotification({ resetContent: true, preserveBoard: true });
+  lastGameEndReasonRef.current = null;
   
   // Reset game result recording flag for new game
   setGameResultRecorded(false);
@@ -2330,11 +2365,7 @@ newSocket.on('rematchAccepted', (data) => {
           waitingForResponse: false
         });
         // Close the modal completely and show toast notification
-        setNotification({
-          title: '',
-          message: '',
-          show: false
-        });
+      hideNotification({ resetContent: true });
         showToast('Opponent declined the rematch');
       });
 
@@ -2454,7 +2485,7 @@ newSocket.on('rematchAccepted', (data) => {
         newSocket.close();
       };
     }
-  }, [gameMode, addFadeOutAnimation, addNewDotAnimation, getCurrentWinnerName, playSound, recordGameEnd, shouldProcessServerTimer, showGameOverNotification, showToast]);
+  }, [gameMode, addFadeOutAnimation, addNewDotAnimation, getCurrentWinnerName, playSound, recordGameEnd, shouldProcessServerTimer, showGameOverNotification, showToast, hideNotification]);
 
   // Timer logic - server-authoritative for online games, local countdown for local games
   // For online games: NO local countdown - only display server timer values
@@ -3185,11 +3216,7 @@ useEffect(() => {
         requestedBy: '',
         waitingForResponse: false
       });
-      setNotification({
-        title: '',
-        message: '',
-        show: false
-      });
+    hideNotification({ resetContent: true, preserveBoard: true });
     }
   };
 
@@ -3400,7 +3427,13 @@ useEffect(() => {
 
   const resetGame = async () => {
     const activeGameId = gameIdRef.current;
-    await emitResetGameToServer(activeGameId);
+    const currentStatus = gameStateRef.current?.gameStatus;
+
+    if (!(gameMode === 'online' && currentStatus && currentStatus !== 'active')) {
+      await emitResetGameToServer(activeGameId);
+    } else {
+      console.log('Skipping server reset for finished online game');
+    }
 
     // Clear inGame flag when resetting game
     const currentUser = AuthService.getCurrentUser();
@@ -5143,15 +5176,15 @@ useEffect(() => {
       {/* Game notification */}
       {notification.show && (
         <>
-          <div className="overlay" style={{ display: 'block' }} onClick={() => setNotification(prev => ({ ...prev, show: false }))} />
+          <div className="overlay" style={{ display: 'block' }} onClick={() => hideNotification()} />
           <div className={`notification ${notification.title === 'Game Drawn' ? 'game-drawn-modal' : ''}`} style={{ display: 'block' }}>
             <h2>{notification.title}</h2>
             {notification.title === 'Play Online' && !authState.isAuthenticated && !authState.isGuest ? (
               <div className="notification-buttons">
-                <button className="btn" onClick={() => { setNotification(prev => ({ ...prev, show: false })); handlePlayAsGuestWrapper(); }}>
+                <button className="btn" onClick={() => { hideNotification({ preserveBoard: true }); handlePlayAsGuestWrapper(); }}>
                   Play as Guest
                 </button>
-                <button className="btn" onClick={() => setNotification(prev => ({ ...prev, show: false }))}>
+                <button className="btn" onClick={() => hideNotification({ preserveBoard: true })}>
                   Cancel
                 </button>
               </div>
@@ -5174,7 +5207,7 @@ useEffect(() => {
                         <button 
                           className="btn" 
                           onClick={() => {
-                            setNotification(prev => ({ ...prev, show: false }));
+                            hideNotification({ preserveBoard: true });
                             enterReviewMode();
                           }}
                           style={{ backgroundColor: '#17a2b8', color: 'white' }}
@@ -5212,7 +5245,7 @@ useEffect(() => {
                         <button 
                           className="btn" 
                           onClick={() => {
-                            setNotification(prev => ({ ...prev, show: false }));
+                            hideNotification({ preserveBoard: true });
                             enterReviewMode();
                           }}
                           style={{ backgroundColor: '#17a2b8', color: 'white' }}
@@ -5220,7 +5253,7 @@ useEffect(() => {
                           📋 Review Game
                         </button>
                       )}
-                      <button className="btn" onClick={() => setNotification(prev => ({ ...prev, show: false }))}>
+                      <button className="btn" onClick={() => hideNotification({ preserveBoard: true })}>
                         Continue Waiting
                       </button>
                     </div>
@@ -5241,7 +5274,7 @@ useEffect(() => {
                         <button 
                           className="btn" 
                           onClick={() => {
-                            setNotification(prev => ({ ...prev, show: false }));
+                            hideNotification({ preserveBoard: true });
                             enterReviewMode();
                           }}
                           style={{ backgroundColor: '#28a745', color: 'white' }}
@@ -5269,7 +5302,7 @@ useEffect(() => {
                         🎯 Request Rematch
                       </button>
 
-                      <button className="btn" onClick={() => setNotification(prev => ({ ...prev, show: false }))}>
+                      <button className="btn" onClick={() => hideNotification()}>
                         Close
                       </button>
                     </div>
@@ -5284,14 +5317,14 @@ useEffect(() => {
                   <button 
                     className="btn" 
                     onClick={() => {
-                      setNotification(prev => ({ ...prev, show: false }));
+                      hideNotification({ preserveBoard: true });
                       enterReviewMode();
                     }}
                     style={{ backgroundColor: '#28a745', color: 'white' }}
                   >
                     📋 Review Game
                   </button>
-                  <button className="btn" onClick={() => setNotification(prev => ({ ...prev, show: false }))}>
+                      <button className="btn" onClick={() => hideNotification()}>
                     Close
                   </button>
                 </div>
@@ -5300,7 +5333,7 @@ useEffect(() => {
               <>
                 <p style={{ whiteSpace: 'pre-line', lineHeight: '1.5' }}>{notification.message}</p>
                 <div className="notification-buttons">
-                  <button className="btn" onClick={() => setNotification(prev => ({ ...prev, show: false }))}>
+                  <button className="btn" onClick={() => hideNotification()}>
                     Close
                   </button>
                 </div>
